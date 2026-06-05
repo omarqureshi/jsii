@@ -1,0 +1,22 @@
+# frozen_string_literal: true
+
+begin
+  require 'yard'
+  YARD::Rake::YardocTask.new(:doc) do |t|
+    t.files = ['lib/**/*.rb']
+  end
+rescue LoadError
+  # yard not installed; `rake doc` unavailable
+end
+
+begin
+  require 'rspec/core/rake_task'
+  RSpec::Core::RakeTask.new(:spec)
+rescue LoadError
+  # rspec not installed
+   task :spec do
+    abort 'rspec is not installed; run `bundle install` first'
+  end
+end
+
+task default: %i[spec]

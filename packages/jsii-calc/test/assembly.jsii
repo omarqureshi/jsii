@@ -65,6 +65,10 @@
         "python": {
           "distName": "scope.jsii-calc-base",
           "module": "scope.jsii_calc_base"
+        },
+        "ruby": {
+          "gem": "scope-jsii-calc-base",
+          "module": "Scope::JsiiCalcBase"
         }
       }
     },
@@ -90,6 +94,10 @@
         "python": {
           "distName": "scope.jsii-calc-base-of-base",
           "module": "scope.jsii_calc_base_of_base"
+        },
+        "ruby": {
+          "gem": "scope-jsii-calc-base-of-base",
+          "module": "Scope::JsiiCalcBaseOfBase"
         }
       }
     },
@@ -137,6 +145,10 @@
         "python": {
           "distName": "scope.jsii-calc-lib",
           "module": "scope.jsii_calc_lib"
+        },
+        "ruby": {
+          "gem": "scope-jsii-calc-lib",
+          "module": "Scope::JsiiCalcLib"
         }
       }
     }
@@ -146,7 +158,7 @@
     "stability": "stable"
   },
   "homepage": "https://github.com/aws/jsii",
-  "jsiiVersion": "5.9.28",
+  "jsiiVersion": "5.9.41",
   "keywords": [
     "aws",
     "jsii",
@@ -522,6 +534,10 @@
       ],
       "distName": "jsii-calc",
       "module": "jsii_calc"
+    },
+    "ruby": {
+      "gem": "jsii-calc",
+      "module": "JsiiCalc"
     }
   },
   "types": {
@@ -20232,5 +20248,5 @@
     "intersection-types"
   ],
   "version": "3.20.120",
-  "fingerprint": "4Z9hfwRyZV7xQ1T09J4YXlycIZsEwNINqk/vo0NzG08="
+  "fingerprint": "r4dkoq//3YbSMhenrFK7HphDgDQQQYhNEHnqJi2hS8c="
 }

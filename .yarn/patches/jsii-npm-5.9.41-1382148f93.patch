@@ -1,0 +1,12 @@
+diff --git a/lib/project-info.js b/lib/project-info.js
+index 62630bf1c76effac44081479b31f762ece4697e0..c6379ad6d4343dff39fdcfaf62a2dacdd87390bb 100644
+--- a/lib/project-info.js
++++ b/lib/project-info.js
+@@ -124,6 +124,7 @@ function validateTargets(targets) {
+         python: ['module', 'distName', 'classifiers'],
+         dotnet: ['namespace', 'packageId', 'iconUrl', 'versionSuffix'],
+         go: ['moduleName', 'packageName', 'versionSuffix'],
++        ruby: ['gem', 'module', 'acronyms'],
+     };
+     for (const [language, config] of Object.entries(targets)) {
+         if (!(language in VALID_TARGET_KEYS)) {

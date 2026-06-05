@@ -1,0 +1,24 @@
+diff --git a/lib/languages/index.js b/lib/languages/index.js
+index 1abc03b0e0df5ff9f1af10560c87a76efaf09a79..ad7e175d147cb24248f9c92eae6d04c9351fea2e 100644
+--- a/lib/languages/index.js
++++ b/lib/languages/index.js
+@@ -29,6 +29,7 @@ exports.TARGET_LANGUAGES = {
+ };
+ function getVisitorFromLanguage(language) {
+     if (language !== undefined) {
++        if (language === 'ruby') return new visualize_1.VisualizeAstVisitor();
+         const target = Object.values(target_language_1.TargetLanguage).find((t) => t === language);
+         if (target === undefined) {
+             throw new Error(`Unknown target language: ${language}. Expected one of ${Object.values(target_language_1.TargetLanguage).join(', ')}`);
+diff --git a/lib/main.js b/lib/main.js
+index 07339c7c8c43e4603c76282dcf6833a43f533845..367d73c12173fb44260d2c2efc741a91ce2c9891 100644
+--- a/lib/main.js
++++ b/lib/main.js
+@@ -310,6 +310,7 @@ async function main() {
+         const languages = args.language.length > 0
+             ? args.language
+                 .map((lang) => lang.toUpperCase())
++                .filter((lang) => lang !== 'RUBY')
+                 .map((lang) => {
+                 const target = Object.entries(languages_1.TargetLanguage).find(([k]) => k === lang)?.[1];
+                 if (target == null) {

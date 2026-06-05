@@ -30,10 +30,10 @@
     "test:update": "yarn build && UPDATE_DIFF=1 yarn test"
   },
   "devDependencies": {
-    "jsii": "5.9.28",
+    "jsii": "^6.0.0",
     "jsii-build-tools": "^0.0.0",
-    "jsii-rosetta": "^5.9.32",
-    "typescript": "5.9.x"
+    "jsii-rosetta": "patch:jsii-rosetta@npm%3A5.9.46#~/.yarn/patches/jsii-rosetta-npm-5.9.46-b2885a67b9.patch",
+    "typescript": ">=6.0.x"
   },
   "jsii": {
     "outdir": "dist",
@@ -55,6 +55,10 @@
       "python": {
         "distName": "scope.jsii-calc-base-of-base",
         "module": "scope.jsii_calc_base_of_base"
+      },
+      "ruby": {
+        "gem": "scope-jsii-calc-base-of-base",
+        "module": "Scope::JsiiCalcBaseOfBase"
       }
     },
     "tsc": {
