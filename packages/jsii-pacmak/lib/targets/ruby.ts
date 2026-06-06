@@ -385,6 +385,11 @@ export class RubyGenerator extends Generator {
 
     const bases = typeSpec.spec.interfaces ?? [];
     const baseMixins = bases.map((b: any) => `::${this.rubyFullTypeName(b)}`);
+    // JSII structs may extend several parents (diamond hierarchies), but a
+    // Ruby class has a single superclass: subclass the first parent and
+    // record the rest via `jsii_extra_struct_bases` so is_a?/kind_of?/case
+    // dispatch honor every declared parent (see Jsii::Struct).  Members are
+    // unaffected either way — allProperties flattens the full hierarchy.
     const baseString =
       typeSpec.datatype && bases.length > 0
         ? ` < ${baseMixins[0]}`
@@ -403,6 +408,11 @@ export class RubyGenerator extends Generator {
     this.code.line(
       `Jsii::Object.register_jsii_fqn("${rubyDq(typeSpec.fqn)}", self)`,
     );
+    if (typeSpec.datatype && baseMixins.length > 1) {
+      this.code.line(
+        `jsii_extra_struct_bases.push(${baseMixins.slice(1).join(', ')})`,
+      );
+    }
     this.code.line('');
 
     if (typeSpec.datatype) {

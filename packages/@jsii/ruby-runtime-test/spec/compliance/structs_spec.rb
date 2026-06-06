@@ -278,6 +278,41 @@ RSpec.describe 'JSII compliance: structs' do
   end
 
   describe 'Ruby-specific struct behavior' do
+    # JSII structs support multiple inheritance; Ruby classes don't.  The
+    # generator subclasses the first declared parent and records the rest
+    # via jsii_extra_struct_bases, which is_a?/kind_of?/case honor.
+    it 'treats diamond structs as instances of every declared parent' do
+      struct = JsiiCalc::DiamondInheritanceTopLevelStruct.new(
+        base_level_property: 'base',
+        first_mid_level_property: 'mid1',
+        second_mid_level_property: 'mid2',
+        top_level_property: 'top'
+      )
+
+      # First parent: real Ruby ancestry.
+      expect(struct).to be_a(JsiiCalc::DiamondInheritanceFirstMidLevelStruct)
+      # Second parent: recorded extra base.
+      expect(struct).to be_a(JsiiCalc::DiamondInheritanceSecondMidLevelStruct)
+      expect(struct).to be_kind_of(JsiiCalc::DiamondInheritanceSecondMidLevelStruct)
+      # Shared grandparent (reached through either path).
+      expect(struct).to be_a(JsiiCalc::DiamondInheritanceBaseLevelStruct)
+
+      # case/when dispatch honors the second parent too.
+      matched = case struct
+                when JsiiCalc::DiamondInheritanceSecondMidLevelStruct then :second
+                else :nope
+                end
+      expect(matched).to eq(:second)
+
+      # Unrelated structs do not conform.
+      expect(struct).not_to be_a(JsiiCalc::StructA)
+      sibling = JsiiCalc::DiamondInheritanceSecondMidLevelStruct.new(
+        base_level_property: 'b', second_mid_level_property: 'm'
+      )
+      expect(sibling).not_to be_a(JsiiCalc::DiamondInheritanceFirstMidLevelStruct)
+      expect(sibling).not_to be_a(JsiiCalc::DiamondInheritanceTopLevelStruct)
+    end
+
     it 'keeps struct equality symmetric across subclasses' do
       child_class = Class.new(JsiiCalc::OptionalStruct)
       parent = JsiiCalc::OptionalStruct.new(field: 'one')
