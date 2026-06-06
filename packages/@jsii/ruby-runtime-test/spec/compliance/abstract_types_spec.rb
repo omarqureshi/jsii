@@ -98,37 +98,33 @@ RSpec.describe 'JSII compliance: abstract types' do
   end
 
   describe 'abstract types (extended)' do
-    it 'can implement and override abstract classes' do
-      class MyAbstractRunner < JsiiCalc::AbstractClass
-        attr_accessor :abstract_property, :prop_from_interface
-
+    # The jsii-relevant part of subclassing an abstract host class is
+    # construction: the kernel must instantiate an *abstract* fqn on behalf
+    # of the guest by synthesizing a JS subclass, with the guest's overrides
+    # registered (see object/overrides.rb).  Calling the overridden members
+    # from Ruby would only exercise plain Ruby dispatch — host-driven
+    # callback dispatch is covered by abstractMembersAreCorrectlyHandled
+    # above — so instead we call the members the guest did NOT override:
+    # those go through the generated forwarding stubs to the kernel, proving
+    # the instance is live on the JS side.
+    it 'can construct native subclasses of abstract host classes' do
+      klass = Class.new(JsiiCalc::AbstractClass) do
         def abstract_method(name)
           "Hello, #{name}!"
         end
-      end
 
-      runner = MyAbstractRunner.new
-      runner.abstract_property = 'prop-val'
-      expect(runner.abstract_property).to eq('prop-val')
-      expect(runner.abstract_method('Ruby')).to eq('Hello, Ruby!')
-    end
-
-    it 'can override methods in a deep hierarchy' do
-      class DeepOverride < JsiiCalc::AbstractClass
-        attr_accessor :abstract_property, :prop_from_interface
-
-        def abstract_method(name)
-          "Deeply #{name}"
-        end
-
-        def non_abstract_method
-          "Overridden non-abstract"
+        def abstract_property
+          'native-abstract-property'
         end
       end
 
-      obj = DeepOverride.new
-      expect(obj.abstract_method('Nested')).to eq('Deeply Nested')
-      expect(obj.non_abstract_method).to eq('Overridden non-abstract')
+      obj = klass.new
+      expect(obj.jsii_ref).not_to be_nil
+
+      # Non-overridden members dispatch through the kernel to the host
+      # implementations on AbstractClass.
+      expect(obj.non_abstract_method).to eq(42)
+      expect(obj.prop_from_interface).to eq('propFromInterfaceValue')
     end
   end
 end
