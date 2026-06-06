@@ -172,6 +172,8 @@ const RUBY_RESERVED_NAMES = new Set([
 export class RubyGenerator extends Generator {
   public constructor(options: TargetOptions) {
     super({ runtimeTypeChecking: options.runtimeTypeChecking });
+    // Ruby convention is 2-space indentation (CodeMaker defaults to 4).
+    this.code.indentation = 2;
   }
 
   /**
@@ -213,8 +215,7 @@ export class RubyGenerator extends Generator {
       this.code.line(`module ${currentModule}; end`);
     }
 
-    this.code.line(`module ${assemblyModule}`);
-    this.code.open('  ');
+    this.code.open(`module ${assemblyModule}`);
 
     // Load assembly dynamically
     const tarballName = this.getAssemblyFileName();
@@ -358,8 +359,7 @@ export class RubyGenerator extends Generator {
       (m: any) => this.rubyConstName(m.name),
       typeSpec.fqn,
     );
-    this.code.line(`module ${prefix}${this.rubyModuleName(typeSpec.name)}`);
-    this.code.open('  ');
+    this.code.open(`module ${prefix}${this.rubyModuleName(typeSpec.name)}`);
     for (const member of resolvedMembers) {
       this.code.line(
         `${this.rubyConstName(member.name)} = Jsii::Enum.new("${rubyDq(typeSpec.fqn)}", "${rubyDq(member.name)}")`,
@@ -392,8 +392,7 @@ export class RubyGenerator extends Generator {
           ? ' < Jsii::Struct'
           : '';
 
-    this.code.line(`${kind} ${prefix}${rubyName}${baseString}`);
-    this.code.open('  ');
+    this.code.open(`${kind} ${prefix}${rubyName}${baseString}`);
 
     if (!typeSpec.datatype) {
       for (const mixin of baseMixins) {
@@ -416,8 +415,7 @@ export class RubyGenerator extends Generator {
         })
         .join(', ');
 
-      this.code.line(`def initialize(${initArgs})`);
-      this.code.open('  ');
+      this.code.open(`def initialize(${initArgs})`);
       for (const prop of props) {
         const rubyName = this.rubyName(prop.name);
         this.emitStructCoercion(rubyName, prop.type, {
@@ -438,10 +436,8 @@ export class RubyGenerator extends Generator {
       }
       this.code.line('');
 
-      this.code.line('def self.jsii_properties');
-      this.code.open('  ');
-      this.code.line('{');
-      this.code.open('  ');
+      this.code.open('def self.jsii_properties');
+      this.code.open('{');
       for (const prop of props) {
         this.code.line(
           `:${this.rubyName(prop.name)} => "${rubyDq(prop.name)}",`,
@@ -451,14 +447,12 @@ export class RubyGenerator extends Generator {
       this.code.close('end');
       this.code.line('');
 
-      this.code.line('def to_jsii');
-      this.code.open('  ');
+      this.code.open('def to_jsii');
       this.code.line('result = {}');
       if (bases.length > 0) {
         this.code.line('result.merge!(super)');
       }
-      this.code.line('result.merge!({');
-      this.code.open('  ');
+      this.code.open('result.merge!({');
       for (const prop of props) {
         this.code.line(
           `"${rubyDq(prop.name)}" => @${this.rubyName(prop.name)},`,
@@ -470,13 +464,12 @@ export class RubyGenerator extends Generator {
     } else {
       for (const prop of resolvedAllProperties) {
         const propRubyName = this.rubyName(prop.name);
-        this.code.line(`def ${propRubyName}()`);
-        this.code.line(`  jsii_get_property("${rubyDq(prop.name)}")`);
-        this.code.line(`end`);
+        this.code.open(`def ${propRubyName}()`);
+        this.code.line(`jsii_get_property("${rubyDq(prop.name)}")`);
+        this.code.close(`end`);
         this.code.line('');
         if (!prop.immutable) {
-          this.code.line(`def ${propRubyName}=(value)`);
-          this.code.open('  ');
+          this.code.open(`def ${propRubyName}=(value)`);
           this.emitStructCoercion('value', prop.type);
           this.emitTypeChecking('value', prop.type, prop.name, {
             isOptional: prop.optional,
@@ -502,8 +495,7 @@ export class RubyGenerator extends Generator {
             return rubyParam;
           })
           .join(', ');
-        this.code.line(`def ${this.rubyName(method.name)}(${sigParams})`);
-        this.code.open('  ');
+        this.code.open(`def ${this.rubyName(method.name)}(${sigParams})`);
         for (const p of method.parameters) {
           const rubyParam = this.rubyName(p.name);
           this.emitStructCoercion(rubyParam, p.type, {
@@ -527,10 +519,8 @@ export class RubyGenerator extends Generator {
         this.code.line('');
       }
 
-      this.code.line('def self.jsii_overridable_methods');
-      this.code.open('  ');
-      this.code.line('{');
-      this.code.open('  ');
+      this.code.open('def self.jsii_overridable_methods');
+      this.code.open('{');
       for (const prop of resolvedAllProperties) {
         const isOptional = prop.optional ? 'true' : 'false';
         this.code.line(
@@ -574,8 +564,7 @@ export class RubyGenerator extends Generator {
       (i: any) => `::${this.rubyFullTypeName(i)}`,
     );
 
-    this.code.line(`class ${prefix}${rubyName} < ${baseClass}`);
-    this.code.open('  ');
+    this.code.open(`class ${prefix}${rubyName} < ${baseClass}`);
 
     for (const mixin of interfaceMixins) {
       this.code.line(`include ${mixin}`);
@@ -600,8 +589,7 @@ export class RubyGenerator extends Generator {
         })
         .join(', ');
 
-      this.code.line(`def initialize(${initParams})`);
-      this.code.open('  ');
+      this.code.open(`def initialize(${initParams})`);
       for (const p of initializer.parameters) {
         const rubyParam = this.rubyName(p.name);
         this.emitStructCoercion(rubyParam, p.type);
@@ -627,8 +615,7 @@ export class RubyGenerator extends Generator {
       );
       this.code.close('end');
     } else {
-      this.code.line('def initialize(*args)');
-      this.code.open('  ');
+      this.code.open('def initialize(*args)');
       this.code.line(
         'Jsii::Object.instance_method(:initialize).bind(self).call(*args)',
       );
@@ -651,10 +638,8 @@ export class RubyGenerator extends Generator {
       (p: any) => !p.static,
     );
 
-    this.code.line('def self.jsii_overridable_methods');
-    this.code.open('  ');
-    this.code.line('{');
-    this.code.open('  ');
+    this.code.open('def self.jsii_overridable_methods');
+    this.code.open('{');
     for (const prop of overridableProps) {
       const rubyName = this.rubyName(prop.name);
       const isOptional = prop.optional ? 'true' : 'false';
@@ -691,8 +676,7 @@ export class RubyGenerator extends Generator {
         })
         .join(', ');
 
-      this.code.line(`def self.${this.rubyMethodName(method)}(${sigParams})`);
-      this.code.open('  ');
+      this.code.open(`def self.${this.rubyMethodName(method)}(${sigParams})`);
       for (const p of method.parameters) {
         const rubyParam = this.rubyName(p.name);
         this.emitStructCoercion(rubyParam, p.type, {
@@ -716,16 +700,15 @@ export class RubyGenerator extends Generator {
       const rubyName = this.rubyPropertyName(prop);
 
       if (prop.static) {
-        this.code.line(`def self.${rubyName}()`);
+        this.code.open(`def self.${rubyName}()`);
         this.code.line(
-          `  Jsii::Kernel.instance.get_static("${rubyDq(typeSpec.fqn)}", "${rubyDq(prop.name)}")`,
+          `Jsii::Kernel.instance.get_static("${rubyDq(typeSpec.fqn)}", "${rubyDq(prop.name)}")`,
         );
-        this.code.line(`end`);
+        this.code.close(`end`);
         this.code.line('');
 
         if (!prop.immutable) {
-          this.code.line(`def self.${rubyName}=(value)`);
-          this.code.open('  ');
+          this.code.open(`def self.${rubyName}=(value)`);
           this.emitStructCoercion('value', prop.type);
           this.emitTypeChecking('value', prop.type, prop.name, {
             isOptional: prop.optional,
@@ -737,14 +720,13 @@ export class RubyGenerator extends Generator {
           this.code.line('');
         }
       } else {
-        this.code.line(`def ${rubyName}()`);
-        this.code.line(`  jsii_get_property("${rubyDq(prop.name)}")`);
-        this.code.line(`end`);
+        this.code.open(`def ${rubyName}()`);
+        this.code.line(`jsii_get_property("${rubyDq(prop.name)}")`);
+        this.code.close(`end`);
         this.code.line('');
 
         if (!prop.immutable) {
-          this.code.line(`def ${rubyName}=(value)`);
-          this.code.open('  ');
+          this.code.open(`def ${rubyName}=(value)`);
           this.emitStructCoercion('value', prop.type);
           this.emitTypeChecking('value', prop.type, prop.name, {
             isOptional: prop.optional,
@@ -775,8 +757,7 @@ export class RubyGenerator extends Generator {
         })
         .join(', ');
 
-      this.code.line(`def ${this.rubyMethodName(method)}(${sigParams})`);
-      this.code.open('  ');
+      this.code.open(`def ${this.rubyMethodName(method)}(${sigParams})`);
       for (const p of method.parameters) {
         const rubyParam = this.rubyName(p.name);
         this.emitStructCoercion(rubyParam, p.type, {
@@ -1026,13 +1007,13 @@ export class RubyGenerator extends Generator {
     const refSpec = this.typeRefSpec(type);
 
     if (options.isVariadic) {
-      this.code.line(`${variableName}.each_with_index do |item, index|`);
+      this.code.open(`${variableName}.each_with_index do |item, index|`);
       this.code.line(
-        `  Jsii::Type.check_type(item, ${rubyJsonLiteral(
+        `Jsii::Type.check_type(item, ${rubyJsonLiteral(
           refSpec,
         )}, "${rubyDq(jsiiName)}[#{index}]")`,
       );
-      this.code.line(`end`);
+      this.code.close(`end`);
     } else {
       this.code.line(
         `Jsii::Type.check_type(${variableName}, ${rubyJsonLiteral(
