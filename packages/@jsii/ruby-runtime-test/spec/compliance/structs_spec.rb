@@ -235,6 +235,28 @@ RSpec.describe 'JSII compliance: structs' do
     expect(parsed['optionalBoolean']).to eq(false)
   end
 
+  # Where is "result"?  It's a property *of the fixture struct* — a booby
+  # trap that is never set, whose mere existence at code-generation time is
+  # the test (compliance.ts):
+  #
+  #   export interface StructWithJavaReservedWords {
+  #     readonly default: string;
+  #     readonly assert?: string;
+  #     // These properties are designed to break the naive implementation
+  #     // of equals() and hashcode() using the standard template
+  #     readonly result?: string;
+  #     readonly that?: string;
+  #   }
+  #
+  # The classic Java equals/hashCode template declares locals named exactly
+  # `that` (the cast counterpart in equals) and `result` (the accumulator in
+  # hashCode).  A naive generator emitting unqualified property reads for a
+  # struct that *also* declares members named result/that gets them shadowed
+  # by the template's own locals — miscompiles or wrong comparisons.  Ruby
+  # has the same hazard in principle (local variables shadow receiver-less
+  # method calls), but the runtime sidesteps it entirely: Jsii::Struct#==
+  # compares serialized property maps (to_jsii == other.to_jsii) instead of
+  # emitting per-struct comparison code.  This test guards that property.
   it 'implements == resistant to a property named "result"', compliance: 'equalsIsResistantToPropertyShadowingResultVariable' do
     first = JsiiCalc::StructWithJavaReservedWords.new(default: 'one')
     second = JsiiCalc::StructWithJavaReservedWords.new(default: 'one')
@@ -244,6 +266,8 @@ RSpec.describe 'JSII compliance: structs' do
     expect(first).not_to eq(third)
   end
 
+  # Same trap as above, aimed at hashCode's `int result = ...` accumulator;
+  # Jsii::Struct#hash delegates to to_jsii.hash, so no local can shadow.
   it 'implements #hash resistant to a property named "result"', compliance: 'hashCodeIsResistantToPropertyShadowingResultVariable' do
     first = JsiiCalc::StructWithJavaReservedWords.new(default: 'one')
     second = JsiiCalc::StructWithJavaReservedWords.new(default: 'one')
