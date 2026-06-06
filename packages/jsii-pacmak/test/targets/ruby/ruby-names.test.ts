@@ -116,6 +116,45 @@ describe('Ruby naming behavior', () => {
     });
   });
 
+  describe('rubyName', () => {
+    it('passes through ordinary member names', () => {
+      expect(rubyTarget.rubyName('fooBar')).toBe('foo_bar');
+      expect(rubyTarget.rubyName('hello')).toBe('hello');
+    });
+
+    it('prefixes Ruby keywords', () => {
+      expect(rubyTarget.rubyName('break')).toBe('_break');
+      expect(rubyTarget.rubyName('class')).toBe('_class');
+      expect(rubyTarget.rubyName('while')).toBe('_while');
+    });
+
+    it('prefixes constructor/allocation hooks so members cannot clobber them', () => {
+      // `def initialize` would silently replace the generated constructor;
+      // `new`/`allocate` are the class methods used to instantiate proxies.
+      expect(rubyTarget.rubyName('initialize')).toBe('_initialize');
+      expect(rubyTarget.rubyName('new')).toBe('_new');
+      expect(rubyTarget.rubyName('allocate')).toBe('_allocate');
+    });
+
+    it('prefixes runtime serialization/dispatch hooks', () => {
+      expect(rubyTarget.rubyName('toJsii')).toBe('_to_jsii');
+      expect(rubyTarget.rubyName('rubyClass')).toBe('_ruby_class');
+      expect(rubyTarget.rubyName('send')).toBe('_send');
+    });
+
+    it('prefixes anything landing in the reserved jsii_ namespace', () => {
+      expect(rubyTarget.rubyName('jsiiRef')).toBe('_jsii_ref');
+      expect(rubyTarget.rubyName('jsiiSerialize')).toBe('_jsii_serialize');
+      expect(rubyTarget.rubyName('jsiiSomeFutureApi')).toBe(
+        '_jsii_some_future_api',
+      );
+    });
+
+    it('prefixes names that start with a digit', () => {
+      expect(rubyTarget.rubyName('2fa')).toBe('_2fa');
+    });
+  });
+
   describe('rubyFullTypeName with submodules', () => {
     it('respects explicit submodule targets', () => {
       // Mock an assembly with submodules explicitly configured

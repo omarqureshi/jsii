@@ -74,21 +74,6 @@ function rubyJsonLiteral(value: any): string {
 }
 
 /**
- * Names that must be renamed (with a leading underscore) when used as Ruby
- * method/parameter identifiers.  Includes:
- *   - Ruby keywords (`end`, `class`, `def`, ...).  Using one as a method
- *     name produces a parse error.
- *   - The handful of Object methods the runtime hard-depends on
- *     (`send`, `__send__`) — without these the kernel can't dispatch back
- *     into a Ruby override.
- *
- * Other Object/Kernel methods (`method`, `methods`, `inspect`, `to_s`,
- * `hash`, ...) are deliberately NOT renamed: jsii-calc and real-world
- * assemblies use these names for legitimate JSII methods, and the
- * shadowing cost is mild (those methods are still reachable via
- * `Object.instance_method(:foo).bind(self).call(...)` or `__send__`).
- */
-/**
  * Whether a jsii member (method, property, or enum value) is marked
  * `@deprecated` in the source assembly.  Used by the collision-resolution
  * pass to pick a winning member when multiple snake_case to the same name.
@@ -105,6 +90,36 @@ function isDeprecated(member: { docs?: { deprecated?: unknown } }): boolean {
   return !!member.docs?.deprecated;
 }
 
+/**
+ * Names that must be renamed (with a leading underscore) when used as Ruby
+ * method/parameter identifiers.  Includes:
+ *   - Ruby keywords (`end`, `class`, `def`, ...).  Using one as a method
+ *     name produces a parse error.
+ *   - The handful of Object methods the runtime hard-depends on
+ *     (`send`, `__send__`) — without these the kernel can't dispatch back
+ *     into a Ruby override.
+ *   - Names the Ruby object model or the jsii runtime itself depends on:
+ *     `initialize` (a member by that name would silently replace the
+ *     generated constructor), `new` / `allocate` (class methods used to
+ *     instantiate proxies — the registry hydrates refs via
+ *     `klass.allocate`), `to_jsii` (struct serialization) and `ruby_class`
+ *     (internal dispatch helper).
+ *   - Additionally (not in this set — see `rubyName`): any name beginning
+ *     with `jsii_` is prefixed, so generated members can never shadow the
+ *     runtime's own API surface (`jsii_ref`, `jsii_serialize`,
+ *     `jsii_call_method`, `jsii_properties`, ...), present or future.
+ *
+ * Other Object/Kernel methods (`method`, `methods`, `inspect`, `to_s`,
+ * `hash`, ...) are deliberately NOT renamed: jsii-calc and real-world
+ * assemblies use these names for legitimate JSII methods, and the
+ * shadowing cost is mild (those methods are still reachable via
+ * `Object.instance_method(:foo).bind(self).call(...)` or `__send__`).
+ *
+ * Must stay in sync with `Jsii::Utils::RUBY_RESERVED_NAMES` in
+ * packages/@jsii/ruby-runtime/lib/jsii/utils.rb (enforced by a spec in
+ * packages/@jsii/ruby-runtime-test/spec/unit/utils_spec.rb), so kernel
+ * callbacks dispatch to the renamed member.
+ */
 const RUBY_RESERVED_NAMES = new Set([
   // Keywords
   'alias',
@@ -146,6 +161,12 @@ const RUBY_RESERVED_NAMES = new Set([
   // Hard runtime dependencies (callbacks use `__send__` for dispatch).
   'send',
   '__send__',
+  // Ruby object-model / jsii-runtime hooks (see doc comment above).
+  'initialize',
+  'new',
+  'allocate',
+  'to_jsii',
+  'ruby_class',
 ]);
 
 export class RubyGenerator extends Generator {
@@ -831,6 +852,13 @@ export class RubyGenerator extends Generator {
   private rubyName(name: string): string {
     const snake = toSnakeCase(name);
     if (RUBY_RESERVED_NAMES.has(snake)) {
+      return `_${snake}`;
+    }
+    // The `jsii_` prefix is reserved for the runtime's own API surface
+    // (`jsii_ref`, `jsii_serialize`, `jsii_call_method`, ...) — prefix any
+    // member that would land in it so generated code can never shadow a
+    // runtime method, present or future.
+    if (snake.startsWith('jsii_')) {
       return `_${snake}`;
     }
     // Names starting with a digit are invalid Ruby identifiers.

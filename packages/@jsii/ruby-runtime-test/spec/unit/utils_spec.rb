@@ -85,6 +85,29 @@ RSpec.describe Jsii::Utils do
       # Generator path: toSnakeCase('While') === 'while' → reserved → '_while'.
       expect(described_class.ruby_member_name('While')).to eq('_while')
     end
+
+    it 'prefixes constructor/allocation hooks (initialize, new, allocate)' do
+      # A JSII member named `initialize` would otherwise replace the
+      # generated constructor; `new`/`allocate` are the class methods used
+      # to instantiate proxies (the registry hydrates refs via
+      # `klass.allocate`).
+      expect(described_class.ruby_member_name('initialize')).to eq('_initialize')
+      expect(described_class.ruby_member_name('new')).to eq('_new')
+      expect(described_class.ruby_member_name('allocate')).to eq('_allocate')
+    end
+
+    it 'prefixes runtime serialization/dispatch hooks (to_jsii, ruby_class)' do
+      expect(described_class.ruby_member_name('toJsii')).to eq('_to_jsii')
+      expect(described_class.ruby_member_name('rubyClass')).to eq('_ruby_class')
+    end
+
+    it 'prefixes any name in the reserved jsii_ namespace' do
+      # The whole `jsii_` prefix is reserved for the runtime's API surface,
+      # present and future — jsii_ref, jsii_serialize, jsii_call_method, ...
+      expect(described_class.ruby_member_name('jsiiRef')).to eq('_jsii_ref')
+      expect(described_class.ruby_member_name('jsiiSerialize')).to eq('_jsii_serialize')
+      expect(described_class.ruby_member_name('jsiiSomeFutureApi')).to eq('_jsii_some_future_api')
+    end
   end
 
   describe '.blank?' do

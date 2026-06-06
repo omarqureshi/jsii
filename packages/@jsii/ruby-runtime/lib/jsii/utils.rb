@@ -21,6 +21,7 @@ module Jsii
       false for if in module next nil not or redo rescue retry return self
       super then true undef unless until when while yield
       send __send__
+      initialize new allocate to_jsii ruby_class
     ].to_set.freeze
 
     module_function
@@ -65,7 +66,10 @@ module Jsii
     # @return [String] the Ruby identifier the generator emits for that member.
     def ruby_member_name(jsii_name)
       snake = underscore(jsii_name)
-      return "_#{snake}" if RUBY_RESERVED_NAMES.include?(snake) || /\A\d/.match?(snake)
+      # `jsii_` is reserved for the runtime's own API surface (jsii_ref,
+      # jsii_serialize, ...) — the generator prefixes any member that would
+      # land in it, so callback dispatch must apply the same renaming.
+      return "_#{snake}" if RUBY_RESERVED_NAMES.include?(snake) || snake.start_with?('jsii_') || /\A\d/.match?(snake)
 
       snake
     end
