@@ -10,6 +10,17 @@ require 'time'
 # interfacesCanBeUsedTransparently_WhenAddedToJsiiType,
 # canLeverageIndirectInterfacePolymorphism, callbackParameterIsInterface,
 # interfaceBuilder, returnSubclassThatImplementsInterface976.
+#
+# Interfaces are a two-way street.  Host→guest: consuming JS objects through
+# interface-typed returns — interface fqns are registered as Ruby *modules*,
+# so a ref that resolves to one hydrates as `Jsii::Object.allocate.extend(mod)`
+# (see Registry#build_uninitialized_instance).  Guest→host: Ruby classes that
+# `include JsiiCalc::ISomething` and get passed to JS consumers; the runtime
+# registers them with an *overrides list* so JS-side calls (e.g. `bell.ring`)
+# come back as callbacks into the Ruby method.  The guest direction also
+# pins down *identity*: a native object passed into the kernel must come back
+# `equal?`-identical, via the process-wide objects map
+# (testNativeObjectsWithInterfaces, creationOfNativeObjectsFromJavaScriptObjects).
 RSpec.describe 'JSII compliance: interfaces' do
   it 'supports the full interface hierarchy (IFriendly, IFriendlier, IRandomNumberGenerator)', compliance: 'testInterfaces' do
     add = JsiiCalc::Add.new(Scope::JsiiCalcLib::Number.new(10), Scope::JsiiCalcLib::Number.new(20))

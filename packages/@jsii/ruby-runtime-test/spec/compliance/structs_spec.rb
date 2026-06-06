@@ -7,6 +7,20 @@ require 'json'
 # Suite tests: structs_*, useNestedStruct, testStructsCanBeDowncastedToParentType,
 # structsAreUndecoratedOntheWayToKernel,
 # equals/hashCodeIsResistantToPropertyShadowingResultVariable.
+#
+# Structs are jsii's value types: pass-by-value data, constructed in Ruby
+# with keyword arguments.  The suite demands full value semantics — `==` and
+# `#hash` by content across required, optional and diamond-inherited
+# properties — plus required-member enforcement at construction
+# (ArgumentError) and serialization in both directions.  Two subtle ones:
+# `structs_returnedLiteralEqualsNativeBuilt` (a JS object literal returned by
+# the kernel must be indistinguishable from a natively-built struct — struct
+# refs are eagerly hydrated into plain values on arrival, see
+# Registry#hydrate_struct!) and `structsAreUndecoratedOntheWayToKernel`
+# (when JS JSON.stringify's a struct we sent, no `$jsii.*` envelope keys may
+# leak into the output).  The shadowing-resistance pair guards against a
+# generated property named `default`/`result` colliding with names the code
+# generator uses internally in its == / #hash implementations.
 RSpec.describe 'JSII compliance: structs' do
   it 'compares non-optional structs by value', compliance: 'structs_nonOptionalequals' do
     struct_a = JsiiCalc::StableStruct.new(readonly_property: 'one')

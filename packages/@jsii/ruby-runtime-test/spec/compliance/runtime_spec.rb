@@ -4,6 +4,13 @@ require 'spec_helper'
 
 # Suite tests: testJsiiAgent, nodeStandardLibrary, exceptions, exceptionMessage,
 # strippedDeprecatedMemberCanBeReceived.
+#
+# Environment plumbing for the Node.js child process the kernel runs in:
+# the JSII_AGENT env var must identify this runtime ("Ruby/<version>") to
+# host code, the child is a real Node so fs/os/crypto must work, JS `throw`
+# must surface as Jsii::RuntimeError with the original message intact, and
+# assemblies compiled with --strip-deprecated must not blow up at runtime
+# when a stripped member's type is received.
 RSpec.describe 'JSII compliance: runtime environment' do
   it 'reports Ruby language and version in JSII_AGENT', compliance: 'testJsiiAgent' do
     # The kernel sets JSII_AGENT=Ruby/<version> on spawn, so this should

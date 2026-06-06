@@ -11,6 +11,19 @@ require 'date'
 # objRefsAreLabelledUsingWithTheMostCorrectType, receiveInstanceOfPrivateClass,
 # classCanBeUsedWhenNotExpressedlyLoaded, downcasting,
 # variadicMethodCanBeInvoked, fluentApi, testFluentApiWithDerivedClasses.
+#
+# Object lifecycle.  Constructor overloads, method calls, property get/set,
+# statics/consts, native subclassing and factory methods for classes with
+# private constructors.  The deep-machinery tests stress the *pending-object
+# window*: during a kernel `create` request, the JS constructor may call back
+# into Ruby with a reference to an object that hasn't been registered yet —
+# Registry#find_by_ref falls back to Kernel#pending_object so `self`
+# identity holds (classesCanSelfReferenceDuringClassInitialization,
+# objectIdDoesNotGetReallocated...).  objRefsAreLabelledUsingWithTheMostCorrectType
+# pins the kernel labelling rule for unexported types: a ref is tagged with
+# the nearest *exported* ancestor class (or implemented interface), which is
+# what makes the abstract-type tests possible at all.  `downcasting` covers
+# the explicit Jsii.downcast unsafe-cast escape hatch.
 RSpec.describe 'JSII compliance: classes and objects' do
   it 'instantiates classes with empty and non-empty constructors', compliance: 'createObjectAndCtorOverloads' do
     JsiiCalc::Calculator.new

@@ -5,6 +5,15 @@ require 'spec_helper'
 # Suite tests: undefinedAndNull, nullShouldBeTreatedAsUndefined,
 # testNullIsAValidOptionalList, testNullIsAValidOptionalMap,
 # eraseUnsetDataValues.
+#
+# The nil/undefined boundary.  JavaScript distinguishes `null` from
+# `undefined`; Ruby only has `nil`, so the runtime must map consistently:
+# unset optionals read as nil, nil written to an optional must arrive as
+# `undefined` (in arguments, struct members and array elements alike), and a
+# host API legitimately returning `undefined` collections must surface nil.
+# `eraseUnsetDataValues` is the subtle one: unset struct keys must be
+# *absent* from the wire payload, not present-with-null — JS `'key' in obj`
+# distinguishes the two, and host code relies on that.
 RSpec.describe 'JSII compliance: null / undefined semantics' do
   it 'reads unset optional values as nil and accepts nil assignment', compliance: 'undefinedAndNull' do
     calc = JsiiCalc::Calculator.new

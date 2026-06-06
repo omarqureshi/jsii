@@ -3,6 +3,13 @@
 require 'spec_helper'
 
 # Suite tests: getAndSetEnumValues, canLoadEnumValues, useEnumFromScopedModule.
+#
+# Enum members travel as `$jsii.enum` wire envelopes carrying the member's
+# fully-qualified name (e.g. "jsii-calc.StringEnum/A").  Covered here:
+# round-tripping members through properties, receiving arbitrary members
+# from the kernel (including integer-backed enums), and enums defined in a
+# *different* assembly — which exercises cross-assembly fqn resolution
+# ("@scope/jsii-calc-lib.EnumFromScopedModule/VALUE1").
 RSpec.describe 'JSII compliance: enums' do
   it 'gets and sets enum values', compliance: 'getAndSetEnumValues' do
     calc = JsiiCalc::Calculator.new

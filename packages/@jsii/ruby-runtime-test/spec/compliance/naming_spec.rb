@@ -4,6 +4,15 @@ require 'spec_helper'
 
 # Suite tests: reservedKeywordsAreSlugifiedIn{ClassProperties,MethodNames,
 # StructProperties}, liftedKwargWithSameNameAsPositionalArg.
+#
+# Code-generation name mangling.  TS members named `int`, `import`,
+# `return`, `assert`, `default`, ... must be reachable from Ruby — slugified
+# (e.g. `_return`) where they would otherwise be syntax errors or shadow
+# runtime-critical methods (see Jsii::Utils.ruby_member_name).
+# liftedKwargWithSameNameAsPositionalArg covers the trailing-struct
+# "lifting" convention: when a struct parameter is expanded into keyword
+# args and one keyword (scope:) collides with a positional parameter's name,
+# both must still land in the right slot on the wire.
 RSpec.describe 'JSII compliance: naming and reserved words' do
   it 'slugifies reserved words used as class property names', compliance: 'reservedKeywordsAreSlugifiedInClassProperties' do
     obj = JsiiCalc::ClassWithJavaReservedWords.new('one')

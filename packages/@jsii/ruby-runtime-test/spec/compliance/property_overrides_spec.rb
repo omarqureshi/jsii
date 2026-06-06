@@ -5,6 +5,15 @@ require 'spec_helper'
 # Suite tests: propertyOverrides_*, canOverrideProtected{Method,Getter,Setter},
 # doNotOverridePrivates_*.
 #
+# Virtual *properties*: guest getter/setter overrides invoked by host code,
+# with and without `super`, with guest exceptions propagating back as
+# Jsii::RuntimeError.  canOverrideProtected* confirms TS-`protected` members
+# are exposed in the assembly and overridable from Ruby.  The six
+# doNotOverridePrivates_* are the inverse guarantee: TS-`private` members
+# are not in the assembly at all, so a guest method that merely *collides*
+# by name must never be wired up as an override — checked for both public
+# and `private` Ruby visibility, for methods and for properties.
+#
 # The SyncOverrides fixture class is defined in spec/support/fixtures.rb.
 RSpec.describe 'JSII compliance: property overrides' do
   it 'invokes guest overrides of property getters and setters', compliance: 'propertyOverrides_get_set' do

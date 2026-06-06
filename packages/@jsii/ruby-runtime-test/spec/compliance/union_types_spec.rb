@@ -5,6 +5,14 @@ require 'spec_helper'
 # Suite tests: unionTypes, unionProperties, unionPropertiesWithBuilder,
 # correctlyDeserializesStructUnions, canObtainReferenceWithOverloadedSetter,
 # canObtainStructReferenceWithOverloadedSetter.
+#
+# `A | B`-typed slots.  Values set through a union-typed property must come
+# back as their *concrete* type, not some boxed wrapper.
+# `correctlyDeserializesStructUnions` is the interesting one: given a
+# `StructA | StructB` parameter, the serialized form must let the JS side
+# tell which struct it received (the set of keys present decides).  The
+# ConfusingToJackson tests are regressions for types whose setters accept
+# unions — historically these broke code generation in other languages.
 RSpec.describe 'JSII compliance: union types' do
   it 'sets and reads union-typed properties with the concrete type', compliance: 'unionTypes' do
     types = JsiiCalc::AllTypes.new

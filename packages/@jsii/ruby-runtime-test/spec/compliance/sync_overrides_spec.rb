@@ -7,6 +7,15 @@ require 'json'
 # fail_syncOverrides_callsDoubleAsync_{method,propertyGetter,propertySetter},
 # callbacksCorrectlyDeserializeArguments.
 #
+# The re-entrant callback path.  When a host method like `caller_is_method`
+# synchronously invokes a guest override mid-request, the wire protocol nests
+# a `callback` message inside the still-pending `invoke` — the Ruby kernel
+# must answer the callback before its own request can complete.
+# `callsSuper` goes one level deeper: the guest override re-enters the
+# kernel *again* from inside the callback.  The three fail_* tests assert the
+# kernel correctly *refuses* an async call made from a sync callback context
+# (it would deadlock the single request pipe), surfaced as Jsii::Error.
+#
 # The SyncOverrides fixture class is defined in spec/support/fixtures.rb.
 RSpec.describe 'JSII compliance: sync overrides' do
   it 'invokes guest overrides of sync virtual methods', compliance: 'syncOverrides' do

@@ -5,6 +5,15 @@ require 'spec_helper'
 # Suite tests: collectionTypes, arrays, maps, arrayReturnedByMethod*,
 # mapReturnedByMethod*, listInClass*, mapInClass*, staticListInClass*,
 # staticMapInClass*, collectionOfInterfaces_*.
+#
+# Arrays and maps in every position: typed properties, method return values,
+# instance properties and static properties.  The `*CannotBeModified` tests
+# verify that the runtime *freezes* collections it hands out — the kernel
+# returns value snapshots, so mutating one locally would silently diverge
+# from the JS-side state; a FrozenError makes that mistake loud instead.
+# The collectionOfInterfaces_* quartet checks that *elements* of returned
+# collections hydrate correctly whether they are structs (value objects,
+# eagerly hydrated) or interfaces (live byref proxies that forward calls).
 RSpec.describe 'JSII compliance: collections' do
   it 'sets and reads array and map properties', compliance: 'collectionTypes' do
     types = JsiiCalc::AllTypes.new

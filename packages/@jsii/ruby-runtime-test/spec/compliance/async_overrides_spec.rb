@@ -4,6 +4,15 @@ require 'spec_helper'
 
 # Suite tests: asyncOverrides_*, voidReturningAsync.
 #
+# Same callback dance as sync_overrides_spec.rb, but for `async` host
+# methods, which use the kernel's begin/end API instead of `invoke`: `begin`
+# starts the promise, callbacks for guest overrides are delivered while it's
+# in flight, and `end` collects the settled result.  From Ruby the whole
+# thing still looks synchronous.  Covered: plain override, override inherited
+# from a parent class, override calling super, two overrides on one object,
+# guest exceptions propagating back through the host promise
+# (asyncOverrides_overrideThrows), and Promise<void> resolving to nil.
+#
 # The OverrideAsyncMethodsByBaseClass, OverrideCallsSuper and TwoOverrides
 # fixture classes are defined in spec/support/fixtures.rb.
 RSpec.describe 'JSII compliance: async overrides' do

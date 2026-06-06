@@ -5,6 +5,17 @@ require 'date'
 
 # Suite tests: primitiveTypes, dates, iso8601DoesNotDeserializeToDate,
 # dynamicTypes.
+#
+# Value marshalling for scalars.  `primitiveTypes` round-trips
+# boolean/string/number/date/json through AllTypes properties.  `dates`
+# checks DateTime works in both a strongly-typed slot (date_property) and an
+# `any` slot — exercising the `$jsii.date` wire envelope in Jsii::Serializer.
+# `iso8601DoesNotDeserializeToDate` is the inverse trap: a *string* that
+# happens to look like a date must come back as a string, not get eagerly
+# coerced into a DateTime.  `dynamicTypes` pushes every shape (scalars,
+# arrays, maps, live objects) through a single `any`-typed property, so the
+# serializer has to pick the right wire envelope per value with no type
+# information to guide it.
 RSpec.describe 'JSII compliance: primitive and dynamic types' do
   it 'sets and reads all primitive types with their respective types', compliance: 'primitiveTypes' do
     types = JsiiCalc::AllTypes.new
