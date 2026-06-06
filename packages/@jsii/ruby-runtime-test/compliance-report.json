@@ -1,119 +1,239 @@
 {
-  "exceptions": {
-    "status": "success"
-  },
-  "arrays": {
-    "status": "success"
-  },
-  "maps": {
-    "status": "success"
-  },
-  "unionProperties": {
-    "status": "success"
-  },
-  "subclassing": {
-    "status": "success"
-  },
-  "consts": {
-    "status": "success"
-  },
-  "testInterfaces": {
-    "status": "success"
-  },
-  "receiveInstanceOfPrivateClass": {
-    "status": "success"
-  },
-  "callbackParameterIsInterface": {
-    "status": "success"
-  },
-  "pureInterfacesCanBeUsedTransparently_WhenTransitivelyImplementing": {
-    "status": "success"
-  },
-  "canLeverageIndirectInterfacePolymorphism": {
-    "status": "success"
-  },
-  "collectionOfInterfaces_ListOfStructs": {
-    "status": "success"
-  },
-  "collectionOfInterfaces_ListOfInterfaces": {
-    "status": "success"
-  },
-  "collectionOfInterfaces_MapOfStructs": {
-    "status": "success"
-  },
-  "collectionOfInterfaces_MapOfInterfaces": {
-    "status": "success"
-  },
-  "returnAbstract": {
-    "status": "success"
-  },
-  "doNotOverridePrivates_method_private": {
-    "status": "success"
-  },
-  "doNotOverridePrivates_property_by_name_private": {
-    "status": "success"
-  },
-  "doNotOverridePrivates_property_getter_private": {
-    "status": "success"
-  },
-  "doNotOverridePrivates_property_by_name_public": {
-    "status": "success"
-  },
-  "doNotOverridePrivates_property_getter_public": {
-    "status": "success"
-  },
-  "classWithPrivateConstructorAndAutomaticProperties": {
-    "status": "success"
-  },
-  "liftedKwargWithSameNameAsPositionalArg": {
+  "abstractMembersAreCorrectlyHandled": {
     "status": "success"
   },
   "arrayReturnedByMethodCanBeRead": {
     "status": "success"
   },
+  "arrayReturnedByMethodCannotBeModified": {
+    "status": "success"
+  },
+  "arrays": {
+    "status": "success"
+  },
+  "asyncOverrides_callAsyncMethod": {
+    "status": "success"
+  },
   "asyncOverrides_overrideAsyncMethod": {
     "status": "success"
   },
-  "statics": {
+  "asyncOverrides_overrideAsyncMethodByParentClass": {
     "status": "success"
   },
-  "structs_returnedLiteralEqualsNativeBuilt": {
+  "asyncOverrides_overrideCallsSuper": {
+    "status": "success"
+  },
+  "asyncOverrides_overrideThrows": {
+    "status": "success"
+  },
+  "asyncOverrides_twoOverrides": {
+    "status": "success"
+  },
+  "callMethods": {
+    "status": "success"
+  },
+  "callbackParameterIsInterface": {
     "status": "success"
   },
   "callbacksCorrectlyDeserializeArguments": {
     "status": "success"
   },
-  "propertyOverrides_interfaces": {
-    "status": "success"
-  },
-  "nullShouldBeTreatedAsUndefined": {
-    "status": "success"
-  },
-  "reservedKeywordsAreSlugifiedInClassProperties": {
-    "status": "success"
-  },
-  "arrayReturnedByMethodCannotBeModified": {
-    "status": "success"
-  },
-  "mapReturnedByMethodCannotBeModified": {
+  "canLeverageIndirectInterfacePolymorphism": {
     "status": "success"
   },
   "canLoadEnumValues": {
     "status": "success"
   },
-  "canOverrideProtectedMethod": {
+  "canObtainReferenceWithOverloadedSetter": {
+    "status": "success"
+  },
+  "canObtainStructReferenceWithOverloadedSetter": {
     "status": "success"
   },
   "canOverrideProtectedGetter": {
     "status": "success"
   },
+  "canOverrideProtectedMethod": {
+    "status": "success"
+  },
   "canOverrideProtectedSetter": {
+    "status": "success"
+  },
+  "canUseInterfaceSetters": {
+    "status": "success"
+  },
+  "classCanBeUsedWhenNotExpressedlyLoaded": {
+    "status": "success"
+  },
+  "classWithPrivateConstructorAndAutomaticProperties": {
+    "status": "success"
+  },
+  "classesCanSelfReferenceDuringClassInitialization": {
+    "status": "success"
+  },
+  "collectionOfInterfaces_ListOfInterfaces": {
+    "status": "success"
+  },
+  "collectionOfInterfaces_ListOfStructs": {
+    "status": "success"
+  },
+  "collectionOfInterfaces_MapOfInterfaces": {
+    "status": "success"
+  },
+  "collectionOfInterfaces_MapOfStructs": {
+    "status": "success"
+  },
+  "collectionTypes": {
+    "status": "success"
+  },
+  "consts": {
+    "status": "success"
+  },
+  "correctlyDeserializesStructUnions": {
+    "status": "success"
+  },
+  "createObjectAndCtorOverloads": {
     "status": "success"
   },
   "creationOfNativeObjectsFromJavaScriptObjects": {
     "status": "success"
   },
+  "dates": {
+    "status": "success"
+  },
+  "doNotOverridePrivates_method_private": {
+    "status": "success"
+  },
+  "doNotOverridePrivates_method_public": {
+    "status": "success"
+  },
+  "doNotOverridePrivates_property_by_name_private": {
+    "status": "success"
+  },
+  "doNotOverridePrivates_property_by_name_public": {
+    "status": "success"
+  },
+  "doNotOverridePrivates_property_getter_private": {
+    "status": "success"
+  },
+  "doNotOverridePrivates_property_getter_public": {
+    "status": "success"
+  },
   "downcasting": {
+    "status": "success"
+  },
+  "dynamicTypes": {
+    "status": "success"
+  },
+  "equalsIsResistantToPropertyShadowingResultVariable": {
+    "status": "success"
+  },
+  "eraseUnsetDataValues": {
+    "status": "success"
+  },
+  "exceptionMessage": {
+    "status": "success"
+  },
+  "exceptions": {
+    "status": "success"
+  },
+  "fail_syncOverrides_callsDoubleAsync_method": {
+    "status": "success"
+  },
+  "fail_syncOverrides_callsDoubleAsync_propertyGetter": {
+    "status": "success"
+  },
+  "fail_syncOverrides_callsDoubleAsync_propertySetter": {
+    "status": "success"
+  },
+  "fluentApi": {
+    "status": "success"
+  },
+  "getAndSetEnumValues": {
+    "status": "success"
+  },
+  "getAndSetNonPrimitiveProperties": {
+    "status": "success"
+  },
+  "getSetPrimitiveProperties": {
+    "status": "success"
+  },
+  "hashCodeIsResistantToPropertyShadowingResultVariable": {
+    "status": "success"
+  },
+  "interfaceBuilder": {
+    "status": "success"
+  },
+  "interfacesCanBeUsedTransparently_WhenAddedToJsiiType": {
+    "status": "success"
+  },
+  "iso8601DoesNotDeserializeToDate": {
+    "status": "success"
+  },
+  "liftedKwargWithSameNameAsPositionalArg": {
+    "status": "success"
+  },
+  "listInClassCanBeReadCorrectly": {
+    "status": "success"
+  },
+  "mapInClassCanBeReadCorrectly": {
+    "status": "success"
+  },
+  "mapInClassCannotBeModified": {
+    "status": "success"
+  },
+  "mapReturnedByMethodCanBeRead": {
+    "status": "success"
+  },
+  "mapReturnedByMethodCannotBeModified": {
+    "status": "success"
+  },
+  "maps": {
+    "status": "success"
+  },
+  "nodeStandardLibrary": {
+    "status": "success"
+  },
+  "nullShouldBeTreatedAsUndefined": {
+    "status": "success"
+  },
+  "objRefsAreLabelledUsingWithTheMostCorrectType": {
+    "status": "success"
+  },
+  "objectIdDoesNotGetReallocatedWhenTheConstructorPassesThisOut": {
+    "status": "success"
+  },
+  "primitiveTypes": {
+    "status": "success"
+  },
+  "propertyOverrides_get_calls_super": {
+    "status": "success"
+  },
+  "propertyOverrides_get_set": {
+    "status": "success"
+  },
+  "propertyOverrides_get_throws": {
+    "status": "success"
+  },
+  "propertyOverrides_interfaces": {
+    "status": "success"
+  },
+  "propertyOverrides_set_calls_super": {
+    "status": "success"
+  },
+  "propertyOverrides_set_throws": {
+    "status": "success"
+  },
+  "pureInterfacesCanBeUsedTransparently": {
+    "status": "success"
+  },
+  "pureInterfacesCanBeUsedTransparently_WhenTransitivelyImplementing": {
+    "status": "success"
+  },
+  "receiveInstanceOfPrivateClass": {
+    "status": "success"
+  },
+  "reservedKeywordsAreSlugifiedInClassProperties": {
     "status": "success"
   },
   "reservedKeywordsAreSlugifiedInMethodNames": {
@@ -122,19 +242,10 @@
   "reservedKeywordsAreSlugifiedInStructProperties": {
     "status": "success"
   },
-  "unionPropertiesWithBuilder": {
+  "returnAbstract": {
     "status": "success"
   },
-  "fluentApi": {
-    "status": "success"
-  },
-  "listInClassCanBeReadCorrectly": {
-    "status": "success"
-  },
-  "mapInClassCannotBeModified": {
-    "status": "success"
-  },
-  "mapReturnedByMethodCanBeRead": {
+  "returnSubclassThatImplementsInterface976": {
     "status": "success"
   },
   "staticListInClassCanBeReadCorrectly": {
@@ -149,124 +260,25 @@
   "staticMapInClassCannotBeModified": {
     "status": "success"
   },
-  "testNativeObjectsWithInterfaces": {
-    "status": "success"
-  },
-  "objRefsAreLabelledUsingWithTheMostCorrectType": {
-    "status": "success"
-  },
-  "equalsIsResistantToPropertyShadowingResultVariable": {
-    "status": "success"
-  },
-  "hashCodeIsResistantToPropertyShadowingResultVariable": {
-    "status": "success"
-  },
-  "primitiveTypes": {
-    "status": "success"
-  },
-  "collectionTypes": {
-    "status": "success"
-  },
-  "dynamicTypes": {
-    "status": "success"
-  },
-  "unionTypes": {
-    "status": "success"
-  },
-  "createObjectAndCtorOverloads": {
-    "status": "success"
-  },
-  "getSetPrimitiveProperties": {
-    "status": "success"
-  },
-  "callMethods": {
-    "status": "success"
-  },
-  "unmarshallIntoAbstractType": {
-    "status": "success"
-  },
-  "getAndSetNonPrimitiveProperties": {
-    "status": "success"
-  },
-  "getAndSetEnumValues": {
-    "status": "success"
-  },
-  "useNestedStruct": {
-    "status": "success"
-  },
-  "asyncOverrides_callAsyncMethod": {
-    "status": "success"
-  },
-  "doNotOverridePrivates_method_public": {
-    "status": "success"
-  },
-  "interfacesCanBeUsedTransparently_WhenAddedToJsiiType": {
-    "status": "success"
-  },
-  "abstractMembersAreCorrectlyHandled": {
-    "status": "success"
-  },
-  "pureInterfacesCanBeUsedTransparently": {
-    "status": "success"
-  },
-  "canUseInterfaceSetters": {
-    "status": "success"
-  },
-  "asyncOverrides_overrideAsyncMethodByParentClass": {
-    "status": "success"
-  },
-  "asyncOverrides_overrideCallsSuper": {
-    "status": "success"
-  },
-  "asyncOverrides_twoOverrides": {
-    "status": "success"
-  },
-  "asyncOverrides_overrideThrows": {
-    "status": "success"
-  },
-  "voidReturningAsync": {
-    "status": "success"
-  },
-  "correctlyDeserializesStructUnions": {
-    "status": "success"
-  },
-  "variadicMethodCanBeInvoked": {
-    "status": "success"
-  },
-  "canObtainReferenceWithOverloadedSetter": {
-    "status": "success"
-  },
-  "canObtainStructReferenceWithOverloadedSetter": {
-    "status": "success"
-  },
-  "undefinedAndNull": {
-    "status": "success"
-  },
-  "classCanBeUsedWhenNotExpressedlyLoaded": {
+  "statics": {
     "status": "success"
   },
   "strippedDeprecatedMemberCanBeReceived": {
     "status": "success"
   },
-  "returnSubclassThatImplementsInterface976": {
+  "structsAreUndecoratedOntheWayToKernel": {
     "status": "success"
   },
-  "classesCanSelfReferenceDuringClassInitialization": {
+  "structs_containsNullChecks": {
     "status": "success"
   },
-  "testJsiiAgent": {
+  "structs_multiplePropertiesEquals": {
     "status": "success"
   },
-  "nodeStandardLibrary": {
+  "structs_multiplePropertiesHashCode": {
     "status": "success"
   },
-  "objectIdDoesNotGetReallocatedWhenTheConstructorPassesThisOut": {
-    "status": "success"
-  },
-  "iso8601DoesNotDeserializeToDate": {
-    "status": "success"
-  },
-  "exceptionMessage": {
+  "structs_nonOptionalequals": {
     "status": "success"
   },
   "structs_nonOptionalhashCode": {
@@ -278,10 +290,7 @@
   "structs_optionalHashCode": {
     "status": "success"
   },
-  "structs_multiplePropertiesHashCode": {
-    "status": "success"
-  },
-  "structs_containsNullChecks": {
+  "structs_returnedLiteralEqualsNativeBuilt": {
     "status": "success"
   },
   "structs_serializeToJsii": {
@@ -293,79 +302,70 @@
   "structs_withDiamondInheritance_correctlyDedupeProperties": {
     "status": "success"
   },
+  "subclassing": {
+    "status": "success"
+  },
   "syncOverrides": {
-    "status": "success"
-  },
-  "propertyOverrides_get_set": {
-    "status": "success"
-  },
-  "propertyOverrides_get_calls_super": {
-    "status": "success"
-  },
-  "propertyOverrides_set_calls_super": {
-    "status": "success"
-  },
-  "propertyOverrides_get_throws": {
-    "status": "success"
-  },
-  "propertyOverrides_set_throws": {
-    "status": "success"
-  },
-  "interfaceBuilder": {
     "status": "success"
   },
   "syncOverrides_callsSuper": {
     "status": "success"
   },
-  "fail_syncOverrides_callsDoubleAsync_method": {
-    "status": "success"
-  },
-  "fail_syncOverrides_callsDoubleAsync_propertyGetter": {
-    "status": "success"
-  },
-  "fail_syncOverrides_callsDoubleAsync_propertySetter": {
-    "status": "success"
-  },
-  "dates": {
-    "status": "success"
-  },
-  "mapInClassCanBeReadCorrectly": {
-    "status": "success"
-  },
-  "useEnumFromScopedModule": {
-    "status": "success"
-  },
-  "testJSObjectLiteralToNative": {
-    "status": "success"
-  },
   "testFluentApiWithDerivedClasses": {
-    "status": "success"
-  },
-  "testLiteralInterface": {
     "status": "success"
   },
   "testInterfaceParameter": {
     "status": "success"
   },
-  "eraseUnsetDataValues": {
+  "testInterfaces": {
     "status": "success"
   },
-  "structs_nonOptionalequals": {
+  "testJSObjectLiteralToNative": {
     "status": "success"
   },
-  "testStructsCanBeDowncastedToParentType": {
+  "testJsiiAgent": {
     "status": "success"
   },
-  "structsAreUndecoratedOntheWayToKernel": {
+  "testLiteralInterface": {
     "status": "success"
   },
-  "structs_multiplePropertiesEquals": {
+  "testNativeObjectsWithInterfaces": {
     "status": "success"
   },
   "testNullIsAValidOptionalList": {
     "status": "success"
   },
   "testNullIsAValidOptionalMap": {
+    "status": "success"
+  },
+  "testStructsCanBeDowncastedToParentType": {
+    "status": "success"
+  },
+  "undefinedAndNull": {
+    "status": "success"
+  },
+  "unionProperties": {
+    "status": "success"
+  },
+  "unionPropertiesWithBuilder": {
+    "status": "success"
+  },
+  "unionTypes": {
+    "status": "success"
+  },
+  "unmarshallIntoAbstractType": {
+    "status": "success"
+  },
+  "useEnumFromScopedModule": {
+    "status": "success"
+  },
+  "useNestedStruct": {
+    "status": "success"
+  },
+  "variadicMethodCanBeInvoked": {
+    "status": "success"
+  },
+  "voidReturningAsync": {
     "status": "success"
   }
 }

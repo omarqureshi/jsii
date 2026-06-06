@@ -57,3 +57,7 @@ RSpec.configure do |config|
     Jsii::Kernel.instance.shutdown
   end
 end
+
+# Shared native fixture classes (registers another before(:suite) hook, which
+# runs after the assembly-loading hook above).
+require_relative 'support/fixtures'
