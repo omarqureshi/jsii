@@ -624,10 +624,26 @@ export class RubyGenerator extends Generator {
         `Jsii::Object.instance_method(:initialize).bind(self).call(${superArgs})`,
       );
       this.code.close('end');
+    } else if (initializer) {
+      // Parameterless constructor (the jsii compiler propagates initializer
+      // entries onto instantiable subclasses, so a missing parameter list
+      // here really means "takes no arguments" — enforce that arity rather
+      // than silently forwarding stray args to the kernel).
+      this.code.open('def initialize');
+      this.code.line(
+        'Jsii::Object.instance_method(:initialize).bind(self).call',
+      );
+      this.code.close('end');
     } else {
+      // No initializer entry at all: jsii emits this for classes whose
+      // constructor is not visible (private).  Instances only ever come
+      // from factory methods and are hydrated via `allocate`, which never
+      // calls #initialize — so constructing one from Ruby is always a bug.
+      // Raise eagerly with a pointer to the factories instead of letting
+      // the kernel reject the create call with a less helpful error.
       this.code.open('def initialize(*args)');
       this.code.line(
-        'Jsii::Object.instance_method(:initialize).bind(self).call(*args)',
+        `raise NoMethodError, "${rubyDq(typeSpec.fqn)} does not have a visible constructor; use the provided factory methods"`,
       );
       this.code.close('end');
     }

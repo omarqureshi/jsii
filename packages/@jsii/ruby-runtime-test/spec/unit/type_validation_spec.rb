@@ -107,5 +107,24 @@ RSpec.describe 'Runtime Type Validation' do
       expect { JsiiCalc::Calculator.new('not props') }
         .to raise_error(TypeError, /Expected props to be of type/)
     end
+
+    it 'enforces zero arity for parameterless constructors' do
+      # Previously a catch-all (*args) silently forwarded stray arguments
+      # to the kernel.
+      expect { JsiiCalc::AllTypes.new(123) }.to raise_error(ArgumentError)
+      expect { JsiiCalc::AllTypes.new }.not_to raise_error
+    end
+
+    it 'raises a helpful error when constructing a private-constructor class' do
+      # Classes without an initializer entry in the assembly have private
+      # constructors: instances only come from factories (hydrated via
+      # allocate, which never calls #initialize).
+      expect { JsiiCalc::ClassWithPrivateConstructorAndAutomaticProperties.new('a', 'b') }
+        .to raise_error(NoMethodError, /does not have a visible constructor/)
+
+      # The factory path is unaffected.
+      obj = JsiiCalc::ClassWithPrivateConstructorAndAutomaticProperties.create('Hello', 'Bye')
+      expect(obj.read_only_string).to eq('Hello')
+    end
   end
 end
