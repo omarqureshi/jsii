@@ -155,6 +155,54 @@ describe('Ruby naming behavior', () => {
     });
   });
 
+  describe('dedupCrossCategory', () => {
+    const byRubyName = (m: any) => rubyTarget.rubyName(m.name);
+    const dedup = (props: any[], methods: any[]) =>
+      rubyTarget.dedupCrossCategory(
+        props,
+        methods,
+        byRubyName,
+        byRubyName,
+        'test.Type',
+      );
+
+    it('passes through non-colliding members', () => {
+      const props = [{ name: 'fooBar' }];
+      const methods = [{ name: 'doThing' }];
+      expect(dedup(props, methods)).toEqual({ props, methods });
+    });
+
+    it('does not treat a static and an instance member as colliding', () => {
+      const props = [{ name: 'value', static: true }];
+      const methods = [{ name: 'value' }];
+      expect(dedup(props, methods)).toEqual({ props, methods });
+    });
+
+    it('drops the deprecated side of a property/method collision', () => {
+      const prop = { name: 'fooBar', docs: { deprecated: 'use foo_bar()' } };
+      const method = { name: 'foo_bar' };
+      expect(dedup([prop], [method])).toEqual({
+        props: [],
+        methods: [method],
+      });
+    });
+
+    it('throws when a property and a method collide and neither is deprecated', () => {
+      expect(() => dedup([{ name: 'fooBar' }], [{ name: 'foo_bar' }])).toThrow(
+        /property 'fooBar', method 'foo_bar'/,
+      );
+    });
+
+    it('throws when every colliding member is deprecated', () => {
+      expect(() =>
+        dedup(
+          [{ name: 'fooBar', docs: { deprecated: 'x' } }],
+          [{ name: 'foo_bar', docs: { deprecated: 'y' } }],
+        ),
+      ).toThrow(/cannot pick a winner/);
+    });
+  });
+
   describe('rubyFullTypeName with submodules', () => {
     it('respects explicit submodule targets', () => {
       // Mock an assembly with submodules explicitly configured

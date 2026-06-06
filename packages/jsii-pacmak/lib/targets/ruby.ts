@@ -370,16 +370,22 @@ export class RubyGenerator extends Generator {
   }
 
   private emitInterfaceType(typeSpec: any, prefix: string): void {
-    const resolvedAllProperties = this.dedupByRubyName(
-      typeSpec.allProperties as any[],
-      (p: any) => this.rubyName(p.name),
-      typeSpec.fqn,
-    );
-    const resolvedAllMethods = this.dedupByRubyName(
-      typeSpec.allMethods as any[],
-      (m: any) => this.rubyName(m.name),
-      typeSpec.fqn,
-    );
+    const { props: resolvedAllProperties, methods: resolvedAllMethods } =
+      this.dedupCrossCategory(
+        this.dedupByRubyName(
+          typeSpec.allProperties as any[],
+          (p: any) => this.rubyName(p.name),
+          typeSpec.fqn,
+        ),
+        this.dedupByRubyName(
+          typeSpec.allMethods as any[],
+          (m: any) => this.rubyName(m.name),
+          typeSpec.fqn,
+        ),
+        (p: any) => this.rubyName(p.name),
+        (m: any) => this.rubyName(m.name),
+        typeSpec.fqn,
+      );
     const kind = typeSpec.datatype ? 'class' : 'module';
     const rubyName = this.rubyModuleName(typeSpec.name);
 
@@ -551,16 +557,22 @@ export class RubyGenerator extends Generator {
   }
 
   private emitClassType(typeSpec: any, prefix: string): void {
-    const resolvedAllProperties = this.dedupByRubyName(
-      typeSpec.allProperties as any[],
-      (p: any) => this.rubyPropertyName(p),
-      typeSpec.fqn,
-    );
-    const resolvedAllMethods = this.dedupByRubyName(
-      typeSpec.allMethods as any[],
-      (m: any) => this.rubyMethodName(m),
-      typeSpec.fqn,
-    );
+    const { props: resolvedAllProperties, methods: resolvedAllMethods } =
+      this.dedupCrossCategory(
+        this.dedupByRubyName(
+          typeSpec.allProperties as any[],
+          (p: any) => this.rubyPropertyName(p),
+          typeSpec.fqn,
+        ),
+        this.dedupByRubyName(
+          typeSpec.allMethods as any[],
+          (m: any) => this.rubyMethodName(m),
+          typeSpec.fqn,
+        ),
+        (p: any) => this.rubyPropertyName(p),
+        (m: any) => this.rubyMethodName(m),
+        typeSpec.fqn,
+      );
     const rubyName = this.rubyModuleName(typeSpec.name);
 
     const baseFqn = typeSpec.spec.base;
@@ -1079,6 +1091,73 @@ export class RubyGenerator extends Generator {
    * Mirrors Python's `prepareMembers`.  See
    * https://github.com/aws/jsii/issues/2508 for the motivating fixture.
    */
+  /**
+   * Resolve *cross-category* Ruby-name collisions: a property and a method
+   * (merged onto one type from different interfaces or across the
+   * hierarchy) that map to the same Ruby identifier would otherwise emit
+   * two `def foo` — last definition silently wins.  Runs after the
+   * per-category {@link dedupByRubyName} passes, with the same policy:
+   * deprecated members lose to non-deprecated ones; ambiguity throws.
+   *
+   * Statics and instance members live in different Ruby namespaces
+   * (`def self.foo` vs `def foo`), so collisions are only checked within
+   * the same staticness.
+   */
+  private dedupCrossCategory(
+    props: any[],
+    methods: any[],
+    propRubyName: (p: any) => string,
+    methodRubyName: (m: any) => string,
+    fqn: string,
+  ): { props: any[]; methods: any[] } {
+    const buckets = new Map<string, Array<{ member: any; isProp: boolean }>>();
+    const add = (member: any, isProp: boolean, name: string) => {
+      const key = `${member.static ? 'static' : 'instance'}:${name}`;
+      const bucket = buckets.get(key) ?? [];
+      bucket.push({ member, isProp });
+      buckets.set(key, bucket);
+    };
+    for (const p of props) add(p, true, propRubyName(p));
+    for (const m of methods) add(m, false, methodRubyName(m));
+
+    const dropped = new Set<any>();
+    for (const [key, bucket] of buckets) {
+      if (bucket.length === 1) {
+        continue;
+      }
+      const rubyKey = key.split(':')[1];
+      const nonDeprecated = bucket.filter((e) => !isDeprecated(e.member));
+      if (nonDeprecated.length === 0) {
+        throw new Error(
+          `All members mapping to Ruby name '${rubyKey}' on ${fqn} are ` +
+            `deprecated; cannot pick a winner.  jsii names: ${bucket
+              .map((e) => `'${e.member.name}'`)
+              .join(', ')}`,
+        );
+      }
+      if (nonDeprecated.length > 1) {
+        throw new Error(
+          `A property and a method on ${fqn} both map to Ruby name ` +
+            `'${rubyKey}': ${nonDeprecated
+              .map((e) => `${e.isProp ? 'property' : 'method'} '${e.member.name}'`)
+              .join(
+                ', ',
+              )}.  Mark all but one deprecated (or rename) to disambiguate.`,
+        );
+      }
+      for (const e of bucket) {
+        if (e !== nonDeprecated[0]) {
+          dropped.add(e.member);
+        }
+      }
+    }
+
+    return {
+      props: props.filter((p) => !dropped.has(p)),
+      methods: methods.filter((m) => !dropped.has(m)),
+    };
+  }
+
   private dedupByRubyName<
     T extends { name: string; docs?: { deprecated?: string } },
   >(members: readonly T[], rubyName: (m: T) => string, fqn: string): T[] {
