@@ -1,4 +1,4 @@
-require "jsii"
+require 'spec_helper'
 
 
 module Mock

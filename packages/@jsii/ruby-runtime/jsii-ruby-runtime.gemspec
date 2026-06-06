@@ -14,7 +14,6 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'base64', '~> 0.2', '>= 0.2.0'
 
   s.add_development_dependency 'rake', '~> 13.0'
-  s.add_development_dependency 'rspec', '~> 3.12'
   s.add_development_dependency 'rubocop', '~> 1.86'
   s.add_development_dependency 'yard', '~> 0.9'
 end

@@ -1,4 +1,4 @@
-require 'jsii'
+require 'spec_helper'
 
 describe Jsii::Kernel::Callbacks do
   let(:callbacks_class) do
