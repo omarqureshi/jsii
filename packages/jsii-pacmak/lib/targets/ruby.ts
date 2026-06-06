@@ -929,8 +929,7 @@ export class RubyGenerator extends Generator {
       if (!this.isStructFqn(ref.fqn)) {
         return undefined;
       }
-      const structType = this.rubyFullTypeName(ref.fqn);
-      return `${valueExpr}.is_a?(Hash) ? ::${structType}.new(**${valueExpr}) : ${valueExpr}`;
+      return this.structFromHashExpr(valueExpr, ref.fqn);
     }
 
     if (spec.isCollectionTypeReference(ref)) {
@@ -962,13 +961,26 @@ export class RubyGenerator extends Generator {
               t.primitive === spec.PrimitiveType.Json)),
       );
       if (structArms.length === 1 && !hashAmbiguous) {
-        const structType = this.rubyFullTypeName(structArms[0].fqn);
-        return `${valueExpr}.is_a?(Hash) ? ::${structType}.new(**${valueExpr}) : ${valueExpr}`;
+        return this.structFromHashExpr(valueExpr, structArms[0].fqn);
       }
       return undefined;
     }
 
     return undefined;
+  }
+
+  /**
+   * Ruby expression coercing `valueExpr` into the struct `fqn` when it is a
+   * Hash, passing anything else through.  Keys are symbolized before the
+   * keyword splat: `**` requires Symbol keys, and JSON-shaped hashes carry
+   * String keys — without `transform_keys` those raise a bare
+   * `ArgumentError: wrong number of arguments` instead of constructing the
+   * struct.  (Symbol keys pass through `to_sym` unchanged; unknown keys
+   * still surface as Ruby's clear "unknown keyword" ArgumentError.)
+   */
+  private structFromHashExpr(valueExpr: string, fqn: string): string {
+    const structType = this.rubyFullTypeName(fqn);
+    return `${valueExpr}.is_a?(Hash) ? ::${structType}.new(**${valueExpr}.transform_keys(&:to_sym)) : ${valueExpr}`;
   }
 
   private emitStructCoercion(

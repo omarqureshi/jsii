@@ -69,6 +69,32 @@ RSpec.describe 'JSII Compliance' do
       expect(obj.obj['j'].example).to eq('c')
     end
 
+    it 'accepts string-keyed hashes (e.g. parsed JSON) wherever structs are coerced' do
+      # The keyword splat needs Symbol keys; coercion symbolizes them so a
+      # JSON-shaped hash works instead of raising a bare ArgumentError.
+      calc = JsiiCalc::Calculator.new({ 'maximum_value' => 100 })
+      expect(calc.max_value).to eq(100)
+
+      result = JsiiCalc::StructPassing.round_trip(
+        1,
+        { 'required' => 'hi', 'second_level' => { 'deeper_required_prop' => 'deep' } }
+      )
+      expect(result.second_level.deeper_required_prop).to eq('deep')
+
+      props = JsiiCalc::ContainerProps.new(
+        array_prop: [{ 'example' => 'one' }],
+        obj_prop: { 'a' => { 'example' => 'two' } },
+        record_prop: {}
+      )
+      expect(props.array_prop[0].example).to eq('one')
+      expect(props.obj_prop['a'].example).to eq('two')
+    end
+
+    it 'reports unknown struct keys as a clear ArgumentError' do
+      expect { JsiiCalc::CalculatorProps.new(bogus_key: 1) }
+        .to raise_error(ArgumentError, /unknown keyword.*bogus_key/)
+    end
+
     it 'still accepts explicit struct instances in constructors' do
       # Ensure backwards compatibility - explicit struct instances should still work
       props = JsiiCalc::CalculatorProps.new(maximum_value: 200)
