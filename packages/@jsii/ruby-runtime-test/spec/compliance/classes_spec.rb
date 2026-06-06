@@ -219,6 +219,31 @@ RSpec.describe 'JSII compliance: classes and objects' do
     end
   end
 
+  describe 'static inheritance (extended)' do
+    # jsii's StaticHello fixture documents the design fork: ES6 inherits
+    # statics through the class hierarchy, Java does not.  Ruby naturally
+    # matches ES6 — singleton methods inherit — so the generator emits a
+    # static only on its *defining* class and lets Ruby inheritance (and the
+    # kernel's base-chain lookup) do the rest.
+    it 'resolves inherited statics through singleton-method inheritance' do
+      # makeInstance is defined on JSII417PublicBaseOfBase (two erased
+      # private classes up); JSII417Derived re-emits nothing — the call
+      # resolves to the base stub, carrying the base fqn to the kernel.
+      expect(JsiiCalc::JSII417Derived.make_instance).to be_a(JsiiCalc::JSII417PublicBaseOfBase)
+    end
+
+    it 'lets a child override parent statics (ES6 semantics)' do
+      expect(JsiiCalc::StaticHelloParent.PROPERTY).to eq(1337)
+      expect(JsiiCalc::StaticHelloParent.property).to eq(1337)
+
+      # The child's own stubs shadow the inherited ones and carry the
+      # child's fqn.
+      expect(JsiiCalc::StaticHelloChild.PROPERTY).to eq(42)
+      expect(JsiiCalc::StaticHelloChild.property).to eq(42)
+      expect { JsiiCalc::StaticHelloChild.method() }.not_to raise_error
+    end
+  end
+
   describe 'inheritance (extended)' do
     it 'handles inheritance with no new properties' do
       # DerivedClassHasNoProperties::Derived inherits from Base

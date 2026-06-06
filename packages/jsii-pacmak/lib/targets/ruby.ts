@@ -636,6 +636,16 @@ export class RubyGenerator extends Generator {
     }
     this.code.line('');
 
+    // Static members are emitted only on their *defining* class.  Ruby
+    // inherits singleton methods, which matches the ES6 static-inheritance
+    // semantics the kernel implements (its method/property lookups walk the
+    // base chain, and the base's stub carries the base fqn).  Re-emitting an
+    // inherited static here would bake the *derived* fqn into the kernel
+    // call instead.  A child that overrides a static still gets its own
+    // stub, because allMethods/allProperties yield the most-derived
+    // declaration (see the StaticHelloParent/Child fixture in jsii-calc).
+    const isOwnStatic = (m: any) => m.definingType?.fqn === typeSpec.fqn;
+
     const overridableMethods = resolvedAllMethods.filter((m: any) => !m.static);
     const overridableProps = resolvedAllProperties.filter(
       (p: any) => !p.static,
@@ -663,7 +673,7 @@ export class RubyGenerator extends Generator {
     this.code.line('');
 
     for (const method of resolvedAllMethods) {
-      if (!method.static) continue;
+      if (!method.static || !isOwnStatic(method)) continue;
 
       const sigParams = method.parameters
         .map((p: any) => {
@@ -701,6 +711,8 @@ export class RubyGenerator extends Generator {
     }
 
     for (const prop of resolvedAllProperties) {
+      if (prop.static && !isOwnStatic(prop)) continue;
+
       const rubyName = this.rubyPropertyName(prop);
 
       if (prop.static) {
