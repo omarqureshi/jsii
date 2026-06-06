@@ -254,18 +254,26 @@ export function toReleaseVersion(
         ['alpha', 'beta', 'rc'].includes(v.toString()),
       );
 
-      let consumedCount = 0;
-      if (rubyPreReleaseIdx > -1) {
-        consumedCount += 2;
-      }
-      if (rubyPostIdx > -1) {
-        consumedCount += 2;
-      }
-      if (rubyDevIdx > -1) {
-        consumedCount += 2;
-      }
+      const unconsumed = version.prerelease.filter((_, idx) => {
+        if (
+          rubyPreReleaseIdx > -1 &&
+          (idx === rubyPreReleaseIdx || idx === rubyPreReleaseIdx + 1)
+        ) {
+          return false;
+        }
+        if (
+          rubyPostIdx > -1 &&
+          (idx === rubyPostIdx || idx === rubyPostIdx + 1)
+        ) {
+          return false;
+        }
+        if (rubyDevIdx > -1 && (idx === rubyDevIdx || idx === rubyDevIdx + 1)) {
+          return false;
+        }
+        return true;
+      });
 
-      if (consumedCount < version.prerelease.length) {
+      if (unconsumed.some((v) => typeof v === 'string')) {
         rubyValidationErrors.push(
           `Contains multiple or unmappable prerelease labels: ${inspect(version.prerelease)}`,
         );

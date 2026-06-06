@@ -158,7 +158,7 @@
     "stability": "stable"
   },
   "homepage": "https://github.com/aws/jsii",
-  "jsiiVersion": "5.9.41",
+  "jsiiVersion": "0.0.0",
   "keywords": [
     "aws",
     "jsii",
@@ -20248,5 +20248,5 @@
     "intersection-types"
   ],
   "version": "3.20.120",
-  "fingerprint": "r4dkoq//3YbSMhenrFK7HphDgDQQQYhNEHnqJi2hS8c="
+  "fingerprint": "88W4jcfbupZhzIk44pnUFhtZ4UVIXzDXaZ8gfOHkdCY="
 }

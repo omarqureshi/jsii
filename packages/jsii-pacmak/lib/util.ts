@@ -62,10 +62,11 @@ export async function findPackageJsonUp(
 ) {
   return findUp(directory, async (dir) => {
     const pjFile = path.join(dir, 'package.json');
-    return (
-      (await fs.pathExists(pjFile)) &&
-      (await fs.readJson(pjFile)).name === packageName
-    );
+    if (!(await fs.pathExists(pjFile))) {
+      return false;
+    }
+    const name = (await fs.readJson(pjFile)).name;
+    return name === packageName || name.endsWith(`/${packageName}`);
   });
 }
 

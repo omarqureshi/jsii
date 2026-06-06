@@ -234,11 +234,11 @@ describe(toReleaseVersion, () => {
   }
 
   test('ruby rejects multiple prerelease labels of the same or different categories', () => {
-    expect(() => toReleaseVersion('1.2.3-alpha.1.rc.2', TargetName.RUBY)).toThrow(
-      /Contains multiple or unmappable prerelease labels/,
-    );
-    expect(() => toReleaseVersion('1.2.3-alpha.1.alpha.2', TargetName.RUBY)).toThrow(
-      /Contains multiple or unmappable prerelease labels/,
-    );
+    expect(() =>
+      toReleaseVersion('1.2.3-alpha.1.rc.2', TargetName.RUBY),
+    ).toThrow(/Contains multiple or unmappable prerelease labels/);
+    expect(() =>
+      toReleaseVersion('1.2.3-alpha.1.alpha.2', TargetName.RUBY),
+    ).toThrow(/Contains multiple or unmappable prerelease labels/);
   });
 });
