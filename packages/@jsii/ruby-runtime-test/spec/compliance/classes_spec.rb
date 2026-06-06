@@ -125,12 +125,42 @@ RSpec.describe 'JSII compliance: classes and objects' do
     expect(obj).not_to be_nil
   end
 
+  # "Most correct" means: the most *derived* type that is still visible in
+  # the assembly.  The fixture hierarchy (jsii-calc/lib/compliance.ts):
+  #
+  #   PublicClass (exported)
+  #     └── InbetweenClass (exported, implements IPublicInterface2)
+  #           └── PrivateClass (NOT exported, implements IPublicInterface)
+  #
+  # `Constructors.makeClass()` is *declared* to return PublicClass but
+  # *actually* returns a PrivateClass.  Neither end of the spectrum is a
+  # valid label for the ref:
+  #
+  #   - the declared type (PublicClass) is too general — the proxy would
+  #     lose capabilities the object really has (ciao(), from
+  #     InbetweenClass/IPublicInterface2), and is_a? checks would lie;
+  #   - the runtime type (PrivateClass) is too specific — it isn't in the
+  #     assembly, so no client has a generated proxy for it.
+  #
+  # The kernel must therefore label the ref with the nearest *exported*
+  # ancestor, InbetweenClass, plus any exported interfaces the instance
+  # implements beyond it (IPublicInterface, which only PrivateClass adds).
+  # Ruby-side, Registry#jsii_deserialize trusts that label to pick the proxy
+  # class.
   it 'labels object references with the most correct type', compliance: 'objRefsAreLabelledUsingWithTheMostCorrectType' do
     class_ref = JsiiCalc::Constructors.make_class()
     iface_ref = JsiiCalc::Constructors.make_interface()
 
+    # Declared PublicClass, hydrated as the more-derived exported ancestor...
     expect(class_ref).to be_a(JsiiCalc::InbetweenClass)
+    # ...which gives the proxy capabilities the declared type doesn't have.
+    expect(class_ref.ciao).to eq('ciao')
+
+    # Declared IPublicInterface — a capability InbetweenClass does NOT
+    # carry, so the labelling must preserve the interface for the proxy to
+    # be able to dispatch bye().
     expect(iface_ref).not_to be_nil
+    expect(iface_ref.bye).to eq('bye')
   end
 
   it 'receives instances of private classes', compliance: 'receiveInstanceOfPrivateClass' do
