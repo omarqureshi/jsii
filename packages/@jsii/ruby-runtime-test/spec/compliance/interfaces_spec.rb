@@ -26,6 +26,12 @@ RSpec.describe 'JSII compliance: interfaces' do
     add = JsiiCalc::Add.new(Scope::JsiiCalcLib::Number.new(10), Scope::JsiiCalcLib::Number.new(20))
     expect(add.hello).to eq("Hello, I am a binary operation. What's your name?")
 
+    # Multiply implements three interfaces at once — hello from IFriendly
+    # (via BinaryOperation), goodbye from IFriendlier, next from
+    # IRandomNumberGenerator — so each value below is a canary proving the
+    # member dispatched to the right interface's implementation.  The 89 is
+    # not arithmetic: it's Multiply's hardcoded, deliberately fake "random
+    # number generator" (calculator.ts: `public next() { return 89; }`).
     multiply = JsiiCalc::Multiply.new(Scope::JsiiCalcLib::Number.new(10), Scope::JsiiCalcLib::Number.new(30))
     expect(multiply.hello).to eq("Hello, I am a binary operation. What's your name?")
     expect(multiply.goodbye).to eq('Goodbye from Multiply!')
