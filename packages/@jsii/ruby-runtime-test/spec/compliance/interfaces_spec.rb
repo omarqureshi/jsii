@@ -21,6 +21,31 @@ require 'time'
 # pins down *identity*: a native object passed into the kernel must come back
 # `equal?`-identical, via the process-wide objects map
 # (testNativeObjectsWithInterfaces, creationOfNativeObjectsFromJavaScriptObjects).
+#
+# Why interface modules exist at all in a duck-typed language: they are not
+# Ruby typing, they are *wire-protocol declaration*.  jsii is nominally
+# typed, and the contract crosses a process boundary the duck can't swim:
+#
+#   - Outbound (guest implements host interface): passing a native object to
+#     a host API sends a kernel `create` with an explicit `interfaces:` list
+#     of fqns, gathered by Object#jsii_interfaces from included modules that
+#     carry a jsii_fqn.  The Node side builds its proxy from that list — it
+#     never probes the Ruby object for methods, so "responds to the right
+#     messages" is unserializable; `include IFoo` is the one-line nominal
+#     fact the protocol demands.  (Python's binding needs @jsii.implements
+#     decorators for the same reason.)
+#   - Inbound (host returns an interface): refs labelled only with an
+#     interface fqn hydrate as Jsii::Object.allocate.extend(mod) — the
+#     module carries the forwarding stubs, camelCase↔snake_case mapping and
+#     reserved-name slugification (next ↔ _next).
+#   - Ergonomics: mixins make is_a?(IDoublable) behave like instanceof
+#     elsewhere, and required members are validated at construction (fail
+#     fast) instead of erroring later inside a Node-side callback.
+#
+# For merely *consuming* host objects the modules are nearly cosmetic; it is
+# the guest-implements-host-interface (callback) direction where they are
+# load-bearing.  This mirrors Ruby's own Comparable/Enumerable idiom:
+# modules as declared contracts.
 RSpec.describe 'JSII compliance: interfaces' do
   it 'supports the full interface hierarchy (IFriendly, IFriendlier, IRandomNumberGenerator)', compliance: 'testInterfaces' do
     add = JsiiCalc::Add.new(Scope::JsiiCalcLib::Number.new(10), Scope::JsiiCalcLib::Number.new(20))
