@@ -73,4 +73,39 @@ RSpec.describe 'Runtime Type Validation' do
       end.to raise_error(TypeError, /Unknown primitive type/)
     end
   end
+
+  describe 'struct member validation' do
+    it 'raises TypeError for a wrong-typed required member' do
+      expect { JsiiCalc::StructB.new(required_string: 123) }
+        .to raise_error(TypeError, /Expected requiredString to be a String/)
+    end
+
+    it 'raises TypeError for a wrong-typed optional member' do
+      expect { JsiiCalc::StructB.new(required_string: 'ok', optional_boolean: 'nope') }
+        .to raise_error(TypeError, /Expected optionalBoolean to be a Boolean/)
+    end
+
+    it 'accepts nil for optional members' do
+      expect { JsiiCalc::StructB.new(required_string: 'ok', optional_boolean: nil) }
+        .not_to raise_error
+    end
+
+    it 'validates coerced hash members against the struct type' do
+      struct = JsiiCalc::StructB.new(
+        required_string: 'ok',
+        optional_struct_a: { required_string: 'inner' }
+      )
+      expect(struct.optional_struct_a).to be_a(JsiiCalc::StructA)
+    end
+  end
+
+  describe 'constructor parameter validation' do
+    it 'validates struct-typed constructor parameters' do
+      # Regression: initializer parameters carry raw spec type refs; the
+      # generator used to read `.spec` off them (undefined) and emit checks
+      # against {primitive: 'any'} — i.e. constructors validated nothing.
+      expect { JsiiCalc::Calculator.new('not props') }
+        .to raise_error(TypeError, /Expected props to be of type/)
+    end
+  end
 end

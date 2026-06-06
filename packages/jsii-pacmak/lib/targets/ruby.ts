@@ -174,11 +174,20 @@ export class RubyGenerator extends Generator {
     super({ runtimeTypeChecking: options.runtimeTypeChecking });
   }
 
-  private isStruct(ref: spec.TypeReference): boolean {
-    if (!spec.isNamedTypeReference(ref)) {
-      return false;
-    }
-    const type = this.reflectAssembly.system.tryFindFqn(ref.fqn);
+  /**
+   * Normalize a type reference to its raw `spec.TypeReference` shape.
+   * Call sites hold two shapes: jsii-reflect `TypeReference` instances
+   * (which wrap the raw spec under `.spec`) for members coming off
+   * `allProperties` / `allMethods`, and raw spec objects for
+   * `typeSpec.spec.initializer.parameters`.  Collection/union introspection
+   * only works on the raw shape.
+   */
+  private typeRefSpec(type: any): spec.TypeReference | undefined {
+    return type?.spec ?? type;
+  }
+
+  private isStructFqn(fqn: string): boolean {
+    const type = this.reflectAssembly.system.tryFindFqn(fqn);
     return !!(type?.isInterfaceType() && type?.isDataType());
   }
 
@@ -413,6 +422,12 @@ export class RubyGenerator extends Generator {
         const rubyName = this.rubyName(prop.name);
         this.emitStructCoercion(rubyName, prop.type, {
           assignment: `@${rubyName}`,
+        });
+        // Validate the (coerced) member value — structs are the main
+        // vehicle for user-supplied data, so they get the same runtime
+        // type checking as method/constructor parameters.
+        this.emitTypeChecking(`@${rubyName}`, prop.type, prop.name, {
+          isOptional: prop.optional,
         });
       }
       this.code.close('end');
@@ -868,32 +883,106 @@ export class RubyGenerator extends Generator {
     return snake;
   }
 
+  /**
+   * Build a Ruby expression that coerces plain Hashes into struct instances
+   * anywhere a struct can appear inside `ref` — directly, as the element
+   * type of an array/map (recursively), or as the single unambiguous struct
+   * arm of a union.  Returns `undefined` when `ref` cannot contain a
+   * coercible struct, so call sites can skip emission entirely.
+   *
+   * Coercion matters beyond ergonomics: an uncoerced Hash serializes with
+   * its literal (snake_case) keys, while the kernel expects the struct's
+   * camelCase wire form — so a Hash that misses coercion is silent wire
+   * corruption, not a graceful fallback.
+   *
+   * Union rule: coerce only when exactly one arm is a struct AND no other
+   * arm could legitimately be satisfied by a Hash (a map arm, or an
+   * any/json arm) — otherwise the Hash is ambiguous and is passed through
+   * unchanged for the runtime/kernel to interpret.
+   *
+   * Block parameters are named `jsii_v<depth>` — the `jsii_` prefix is
+   * reserved (see RUBY_RESERVED_NAMES), so they can never collide with or
+   * shadow a generated parameter name.
+   */
+  private coercionExpr(
+    valueExpr: string,
+    ref: spec.TypeReference | undefined,
+    depth = 0,
+  ): string | undefined {
+    if (!ref) {
+      return undefined;
+    }
+
+    if (spec.isNamedTypeReference(ref)) {
+      if (!this.isStructFqn(ref.fqn)) {
+        return undefined;
+      }
+      const structType = this.rubyFullTypeName(ref.fqn);
+      return `${valueExpr}.is_a?(Hash) ? ::${structType}.new(**${valueExpr}) : ${valueExpr}`;
+    }
+
+    if (spec.isCollectionTypeReference(ref)) {
+      const blockVar = `jsii_v${depth}`;
+      const inner = this.coercionExpr(
+        blockVar,
+        ref.collection.elementtype,
+        depth + 1,
+      );
+      if (!inner) {
+        return undefined;
+      }
+      if (ref.collection.kind === spec.CollectionKind.Array) {
+        return `${valueExpr}.is_a?(Array) ? ${valueExpr}.map { |${blockVar}| ${inner} } : ${valueExpr}`;
+      }
+      return `${valueExpr}.is_a?(Hash) ? ${valueExpr}.transform_values { |${blockVar}| ${inner} } : ${valueExpr}`;
+    }
+
+    if (spec.isUnionTypeReference(ref)) {
+      const structArms = ref.union.types.filter(
+        (t) => spec.isNamedTypeReference(t) && this.isStructFqn(t.fqn),
+      ) as spec.NamedTypeReference[];
+      const hashAmbiguous = ref.union.types.some(
+        (t) =>
+          (spec.isCollectionTypeReference(t) &&
+            t.collection.kind === spec.CollectionKind.Map) ||
+          (spec.isPrimitiveTypeReference(t) &&
+            (t.primitive === spec.PrimitiveType.Any ||
+              t.primitive === spec.PrimitiveType.Json)),
+      );
+      if (structArms.length === 1 && !hashAmbiguous) {
+        const structType = this.rubyFullTypeName(structArms[0].fqn);
+        return `${valueExpr}.is_a?(Hash) ? ::${structType}.new(**${valueExpr}) : ${valueExpr}`;
+      }
+      return undefined;
+    }
+
+    return undefined;
+  }
+
   private emitStructCoercion(
     variableName: string,
     type: any,
     options: { variadic?: boolean; assignment?: string } = {},
   ): void {
-    if (!this.isStruct(type)) {
+    const ref = this.typeRefSpec(type);
+
+    if (options.variadic) {
+      // For variadic parameters, `ref` is the element type already.
+      const inner = this.coercionExpr('jsii_v0', ref, 1);
+      if (inner) {
+        this.code.line(`${variableName}.map! { |jsii_v0| ${inner} }`);
+      }
+      return;
+    }
+
+    const expr = this.coercionExpr(variableName, ref);
+    if (!expr) {
       if (options.assignment) {
         this.code.line(`${options.assignment} = ${variableName}`);
       }
       return;
     }
-
-    const structType = this.rubyFullTypeName(type.fqn);
-    if (options.variadic) {
-      this.code.line(
-        `${variableName}.map! { |i| i.is_a?(Hash) ? ::${structType}.new(**i) : i }`,
-      );
-    } else if (options.assignment) {
-      this.code.line(
-        `${options.assignment} = ${variableName}.is_a?(Hash) ? ::${structType}.new(**${variableName}) : ${variableName}`,
-      );
-    } else {
-      this.code.line(
-        `${variableName} = ::${structType}.new(**${variableName}) if ${variableName}.is_a?(Hash)`,
-      );
-    }
+    this.code.line(`${options.assignment ?? variableName} = ${expr}`);
   }
 
   private emitTypeChecking(
@@ -906,18 +995,24 @@ export class RubyGenerator extends Generator {
       return;
     }
 
+    // Normalize: initializer parameters carry raw spec type refs (no
+    // `.spec`); reflect members wrap theirs.  Reading `.spec`
+    // unconditionally made every constructor check validate against
+    // `{primitive: 'any'}` — i.e. check nothing.
+    const refSpec = this.typeRefSpec(type);
+
     if (options.isVariadic) {
       this.code.line(`${variableName}.each_with_index do |item, index|`);
       this.code.line(
         `  Jsii::Type.check_type(item, ${rubyJsonLiteral(
-          type.spec,
+          refSpec,
         )}, "${rubyDq(jsiiName)}[#{index}]")`,
       );
       this.code.line(`end`);
     } else {
       this.code.line(
         `Jsii::Type.check_type(${variableName}, ${rubyJsonLiteral(
-          type.spec,
+          refSpec,
         )}, "${rubyDq(jsiiName)}")${options.isOptional ? ` unless ${variableName}.nil?` : ''}`,
       );
     }
