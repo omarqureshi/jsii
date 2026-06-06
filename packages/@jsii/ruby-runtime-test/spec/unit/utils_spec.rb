@@ -19,8 +19,17 @@ RSpec.describe Jsii::Utils do
       expect(described_class.underscore('HTTPRequest')).to eq('http_request')
     end
 
-    it 'replaces hyphens and namespace separators with underscores' do
+    # The implementation is adapted from ActiveSupport's String#underscore
+    # and inherits two behaviors no jsii input can ever trigger: member names
+    # on the wire are plain camelCase identifiers (alphanumeric, see
+    # dynamic_invocation.rb), so they never contain '-' or '::'.  These
+    # examples pin the inherited behavior so a future reimplementation that
+    # changes it does so knowingly.
+    it 'replaces hyphens with underscores (ActiveSupport heritage; unused by jsii)' do
       expect(described_class.underscore('foo-bar')).to eq('foo_bar')
+    end
+
+    it 'converts namespace separators to path separators, NOT underscores (ActiveSupport heritage; unused by jsii)' do
       expect(described_class.underscore('Foo::Bar')).to eq('foo/bar')
     end
 
