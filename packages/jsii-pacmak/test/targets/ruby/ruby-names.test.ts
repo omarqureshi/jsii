@@ -101,6 +101,17 @@ describe('Ruby naming behavior', () => {
       expect(rubyTarget.rubyModuleName('EcsCluster')).toBe('ECSCluster');
     });
 
+    it('produces valid constants for digit- and underscore-leading names', () => {
+      // npm allows package names like `3d-tools`; Ruby constants must start
+      // with an uppercase letter.  V_ prefix mirrors rubyConstName.
+      expect(rubyTarget.rubyModuleName('3d-tools')).toBe('V_3dTools');
+      expect(rubyTarget.rubyModuleName('3DSecure')).toBe('V_3DSecure');
+      expect(rubyTarget.rubyModuleName('@scope/3d')).toBe('Scope::V_3d');
+      expect(rubyTarget.rubyModuleName('_internal')).toBe('V__internal');
+      // Ordinary names are untouched.
+      expect(rubyTarget.rubyModuleName('jsii-calc')).toBe('JsiiCalc');
+    });
+
     it('treats acronyms as literal text, not regex patterns', () => {
       // A config-supplied acronym containing regex metacharacters must not
       // break generation (previously: "Nothing to repeat" SyntaxError) or

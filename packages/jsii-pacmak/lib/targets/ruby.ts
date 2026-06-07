@@ -1286,6 +1286,14 @@ export class RubyGenerator extends Generator {
       });
     }
 
+    // Ruby constants must start with an uppercase letter.  npm allows
+    // package names like `3d-tools` (and leading underscores), which would
+    // otherwise produce invalid constants like `3dTools`.  Prefix with `V_`,
+    // mirroring rubyConstName's treatment of digit-leading enum members.
+    if (!/^[A-Z]/.test(pascal)) {
+      pascal = `V_${pascal}`;
+    }
+
     return pascal;
   }
 
