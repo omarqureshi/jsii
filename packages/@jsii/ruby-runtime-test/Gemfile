@@ -1,0 +1,4 @@
+source 'https://rubygems.org'
+
+gem 'jsii-ruby-runtime', path: '../ruby-runtime'
+gem 'rspec', '~> 3.12'
