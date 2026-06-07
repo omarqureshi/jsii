@@ -271,7 +271,7 @@ export class RubyGenerator extends Generator {
           return 'DateTime';
         case spec.PrimitiveType.Json:
           return 'Hash';
-        default:
+        case spec.PrimitiveType.Any:
           return 'Object';
       }
     }
@@ -373,10 +373,15 @@ export class RubyGenerator extends Generator {
     }
 
     const exampleLines = docs.example
-      ? ['# @example', ...docs.example.split('\n').map((l) => `#   ${l.trimEnd()}`.trimEnd())]
+      ? [
+          '# @example',
+          ...docs.example
+            .split('\n')
+            .map((l) => `#   ${l.trimEnd()}`.trimEnd()),
+        ]
       : [];
 
-    const hasText = !!(docs.summary || docs.remarks);
+    const hasText = !!docs.summary || !!docs.remarks;
     if (!hasText && tags.length === 0 && exampleLines.length === 0) {
       return;
     }
@@ -916,9 +921,7 @@ export class RubyGenerator extends Generator {
       m.definingType.fqn === typeSpec.fqn;
 
     const overridableMethods = resolvedAllMethods.filter((m) => !m.static);
-    const overridableProps = resolvedAllProperties.filter(
-      (p) => !p.static,
-    );
+    const overridableProps = resolvedAllProperties.filter((p) => !p.static);
 
     this.code.open('def self.jsii_overridable_methods');
     this.code.open('{');
@@ -1422,7 +1425,9 @@ export class RubyGenerator extends Generator {
         throw new Error(
           `A property and a method on ${fqn} both map to Ruby name ` +
             `'${rubyKey}': ${nonDeprecated
-              .map((e) => `${e.isProp ? 'property' : 'method'} '${e.member.name}'`)
+              .map(
+                (e) => `${e.isProp ? 'property' : 'method'} '${e.member.name}'`,
+              )
               .join(
                 ', ',
               )}.  Mark all but one deprecated (or rename) to disambiguate.`,
@@ -1607,7 +1612,9 @@ export class RubyGenerator extends Generator {
       `  s.authors     = ['${rubySq(assemblySpec.author?.name ?? 'JSII Generator')}']`,
     );
     if (assemblySpec.license) {
-      gemspecContent.push(`  s.license     = '${rubySq(assemblySpec.license)}'`);
+      gemspecContent.push(
+        `  s.license     = '${rubySq(assemblySpec.license)}'`,
+      );
     }
     if (assemblySpec.homepage) {
       gemspecContent.push(

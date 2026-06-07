@@ -116,7 +116,9 @@ describe('Ruby naming behavior', () => {
       // A config-supplied acronym containing regex metacharacters must not
       // break generation (previously: "Nothing to repeat" SyntaxError) or
       // inject match behavior.
-      expect(() => rubyTarget.rubyModuleName('CppHelper', ['C++'])).not.toThrow();
+      expect(() =>
+        rubyTarget.rubyModuleName('CppHelper', ['C++']),
+      ).not.toThrow();
       expect(rubyTarget.rubyModuleName('CppHelper', ['C++'])).toBe('CppHelper');
       expect(rubyTarget.rubyModuleName('fooBar', ['.*'])).toBe('FooBar');
     });
@@ -133,8 +135,11 @@ describe('Ruby naming behavior', () => {
     it('ignores blank acronym entries', () => {
       // An empty-string acronym would match everywhere; assemblyAcronyms
       // filters it out before it reaches the regex.
-      expect(rubyTarget.assemblyAcronyms({ targets: { ruby: { acronyms: ['', 'VPC', 42] } } }))
-        .toEqual(['VPC']);
+      expect(
+        rubyTarget.assemblyAcronyms({
+          targets: { ruby: { acronyms: ['', 'VPC', 42] } },
+        }),
+      ).toEqual(['VPC']);
     });
 
     it('does not over-capitalize acronyms embedded inside words', () => {
