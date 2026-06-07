@@ -39,7 +39,7 @@ function rubyGemName(assembly: {
 }): string {
   return (
     (assembly.targets?.ruby?.gem as string | undefined) ??
-    assembly.name.replace('@', '').replace('/', '-')
+    assembly.name.replace(/@/g, '').replace(/\//g, '-')
   );
 }
 
@@ -168,6 +168,8 @@ const RUBY_RESERVED_NAMES = new Set([
   'case',
   'class',
   'def',
+  // NB: unreachable — toSnakeCase strips the question mark before lookup —
+  // kept so the list reads as the complete Ruby keyword set.
   'defined?',
   'do',
   'else',
@@ -434,8 +436,10 @@ export class RubyGenerator extends Generator {
     const classRubyPaths = this.collectClassRubyPaths();
     this.emitLocalNamespacePredeclarations(classRubyPaths);
 
-    // Loop through the Abstract Syntax Tree (AST) metadata types
-    const types = assembly.allTypes.slice();
+    // Topologically sort the assembly's types so that everything a type's
+    // *declaration line* references (superclass, included interface
+    // modules, lexically enclosing type) is emitted before the type itself.
+    const typesByFqn = new Map(assembly.allTypes.map((t) => [t.fqn, t]));
     const sortedTypes: reflect.Type[] = [];
     const visited = new Set<string>();
 
@@ -445,7 +449,7 @@ export class RubyGenerator extends Generator {
 
       // Visit base class
       if (type.isClassType() && type.spec.base) {
-        const base = assembly.allTypes.find((t) => t.fqn === type.spec.base);
+        const base = typesByFqn.get(type.spec.base);
         if (base) visit(base);
       }
 
@@ -455,22 +459,21 @@ export class RubyGenerator extends Generator {
           ? (type.spec.interfaces ?? [])
           : [];
       for (const ifaceFqn of interfaces) {
-        const iface = assembly.allTypes.find((t) => t.fqn === ifaceFqn);
+        const iface = typesByFqn.get(ifaceFqn);
         if (iface) visit(iface);
       }
 
       // Visit declaring parent for nested types
       const fqnParts = type.fqn.split('.');
       if (fqnParts.length > 2) {
-        const parentFqn = fqnParts.slice(0, -1).join('.');
-        const parentType = assembly.allTypes.find((t) => t.fqn === parentFqn);
+        const parentType = typesByFqn.get(fqnParts.slice(0, -1).join('.'));
         if (parentType) visit(parentType);
       }
 
       sortedTypes.push(type);
     };
 
-    for (const type of types) {
+    for (const type of assembly.allTypes) {
       visit(type);
     }
 
@@ -581,6 +584,9 @@ export class RubyGenerator extends Generator {
     typeSpec: reflect.InterfaceType,
     prefix: string,
   ): void {
+    // For datatype interfaces (structs) the methods list is empty by
+    // construction — the jsii compiler forbids methods on them — so the
+    // method side of the dedup below is a no-op in that branch.
     const { props: resolvedAllProperties, methods: resolvedAllMethods } =
       this.dedupCrossCategory(
         this.dedupByRubyName(
@@ -785,6 +791,13 @@ export class RubyGenerator extends Generator {
   }
 
   private emitClassType(typeSpec: reflect.ClassType, prefix: string): void {
+    // Deliberately iterate the *flattened* member lists (allProperties /
+    // allMethods): every class re-emits inherited instance members, so each
+    // generated class carries its own forwarding stub for every member it
+    // exposes — which is what makes `super` work in guest overrides of
+    // inherited members.  The output bloat (O(depth × members)) is the
+    // accepted cost; statics are the exception (emitted on their defining
+    // class only, see isOwnStatic below).
     const { props: resolvedAllProperties, methods: resolvedAllMethods } =
       this.dedupCrossCategory(
         this.dedupByRubyName(
@@ -1124,6 +1137,19 @@ export class RubyGenerator extends Generator {
   private relativeRubyNamespace(fqn: string): string {
     const full = this.rubyFullTypeName(fqn).split('::');
     const asm = this.rubyModuleForAssembly(fqn.split('.')[0]).split('::');
+    // Slicing the assembly-module prefix off the full path is only sound if
+    // the full path actually starts with it.  An explicitly-configured
+    // submodule module that *replaces* the root (e.g. `module: 'Flat'`)
+    // would silently mis-slice — types would be emitted into the wrong
+    // namespace.  Fail generation with a pointer at the config instead.
+    if (!asm.every((part, i) => full[i] === part)) {
+      throw new Error(
+        `Ruby module for '${fqn}' resolves to '${full.join('::')}', which ` +
+          `does not live under its assembly's module '${asm.join('::')}'. ` +
+          `Explicit submodule targets.ruby.module values must extend the ` +
+          `assembly module (e.g. '${asm.join('::')}::MySubmodule').`,
+      );
+    }
     return full.slice(asm.length, -1).join('::');
   }
 

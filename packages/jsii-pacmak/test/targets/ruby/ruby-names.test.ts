@@ -280,5 +280,34 @@ describe('Ruby naming behavior', () => {
         configurable: true,
       });
     });
+
+    it('rejects submodule modules that do not extend the assembly module', () => {
+      const mockConfig = {
+        name: 'aws-cdk-lib',
+        targets: { ruby: { module: 'AWSCDK' } },
+        submodules: {
+          'aws-cdk-lib.rogue': {
+            // Replaces the root instead of extending it — relative-namespace
+            // slicing would emit types into the wrong module.
+            targets: { ruby: { module: 'Flat' } },
+          },
+        },
+      };
+
+      const originalAssembly = rubyTarget.assembly;
+      Object.defineProperty(rubyTarget, 'assembly', {
+        value: mockConfig,
+        configurable: true,
+      });
+
+      expect(() =>
+        rubyTarget.relativeRubyNamespace('aws-cdk-lib.rogue.Type'),
+      ).toThrow(/does not live under its assembly's module 'AWSCDK'/);
+
+      Object.defineProperty(rubyTarget, 'assembly', {
+        value: originalAssembly,
+        configurable: true,
+      });
+    });
   });
 });
