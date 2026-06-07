@@ -14,7 +14,10 @@ ${scriptdir}/align-version.js ${files}
 
 # validation
 marker=$(node -p "require('./scripts/get-version-marker')")
-if find . -name package.json | grep -v node_modules | xargs grep "[^0-9]${marker}"; then
+# The root resolutions entry pins the patched compiler fork with an
+# any-version range (patch:@omarqureshi/jsii@npm:>=0.0.0-0#...); the 0.0.0
+# there is range syntax, not an unaligned version marker — filter it out.
+if find . -name package.json | grep -v node_modules | xargs grep "[^0-9]${marker}" | grep -v '@npm:>='; then
   echo "ERROR: unexpected version marker ${marker} in a package.json file"
   exit 1
 fi

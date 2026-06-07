@@ -9,6 +9,10 @@ on:
 env:
   DOTNET_NOLOGO: true
   NODE_OPTIONS: --max-old-space-size=4096
+  # .yarnrc.yml reads this to authenticate against npm.pkg.github.com for the
+  # @omarqureshi scope (GitHub Packages requires auth even for public
+  # packages). Jobs that run `yarn install` also need `packages: read`.
+  NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 # This workflows currently has the following jobs:
 # - build                   : Builds the source tree as-is
 #   - test                  : Runs all unit tests against the build result
@@ -19,6 +23,7 @@ jobs:
     name: Build
     permissions:
       contents: read
+      packages: read
     runs-on: ubuntu-latest
     steps:
       # Check out the code
@@ -107,6 +112,7 @@ jobs:
     name: Create Release Package
     permissions:
       contents: read
+      packages: read
     runs-on: ubuntu-latest
     steps:
       # Check out the code
@@ -192,6 +198,7 @@ jobs:
   test:
     permissions:
       contents: none
+      packages: read
     name: Test (${{ matrix.title }})
     needs: build
     strategy:
