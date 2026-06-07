@@ -1,6 +1,7 @@
 import * as spec from '@jsii/spec';
 import { toSnakeCase, toPascalCase } from 'codemaker';
 import * as fs from 'fs-extra';
+import * as reflect from 'jsii-reflect';
 import * as path from 'path';
 
 import { Generator, Legalese } from '../generator';
@@ -98,6 +99,37 @@ function isDeprecated(member: { docs?: { deprecated?: unknown } }): boolean {
 }
 
 /**
+ * A type reference in either of the two shapes this generator handles:
+ * jsii-reflect wrappers (members coming off `allProperties`/`allMethods`)
+ * or raw spec objects (initializer parameters).  Normalize with
+ * {@link RubyGenerator.typeRefSpec} before introspecting.
+ */
+type RubyTypeRef = reflect.TypeReference | spec.TypeReference;
+
+/**
+ * Minimal structural shape of a documentable, typed parameter — satisfied
+ * by `reflect.Parameter`, raw `spec.Parameter`, and `reflect.Property`
+ * (struct members doubling as constructor keyword arguments).
+ */
+interface ParamLike {
+  readonly name: string;
+  readonly type?: RubyTypeRef;
+  readonly optional?: boolean;
+  readonly variadic?: boolean;
+}
+
+/**
+ * Minimal structural shape required by the member-collision passes —
+ * satisfied by reflect members (whose `docs.deprecated` is a boolean) and
+ * raw spec members (where it is a string reason).
+ */
+interface MemberLike {
+  readonly name: string;
+  readonly static?: boolean;
+  readonly docs?: { readonly deprecated?: unknown };
+}
+
+/**
  * Names that must be renamed (with a leading underscore) when used as Ruby
  * method/parameter identifiers.  Includes:
  *   - Ruby keywords (`end`, `class`, `def`, ...).  Using one as a method
@@ -191,8 +223,13 @@ export class RubyGenerator extends Generator {
    * `typeSpec.spec.initializer.parameters`.  Collection/union introspection
    * only works on the raw shape.
    */
-  private typeRefSpec(type: any): spec.TypeReference | undefined {
-    return type?.spec ?? type;
+  private typeRefSpec(
+    type: RubyTypeRef | undefined,
+  ): spec.TypeReference | undefined {
+    if (type instanceof reflect.TypeReference) {
+      return type.spec;
+    }
+    return type;
   }
 
   private isStructFqn(fqn: string): boolean {
@@ -203,7 +240,10 @@ export class RubyGenerator extends Generator {
   /**
    * Extract the raw `spec.Docs` from either shape we hold: jsii-reflect
    * objects wrap it under `.spec.docs`; plain spec objects (enum members,
-   * initializer parameters) carry `.docs` directly.
+   * initializer parameters) carry `.docs` directly.  Genuinely dual-shape,
+   * hence the `any` — reflect `Docs` instances also satisfy the returned
+   * type structurally (their getters mirror spec.Docs, except `deprecated`
+   * which is a boolean; emitDocs handles both).
    */
   private rawDocs(obj: any): spec.Docs | undefined {
     return obj?.spec?.docs ?? obj?.docs;
@@ -278,16 +318,16 @@ export class RubyGenerator extends Generator {
    * there are no docs and no tags to write.
    */
   private emitDocs(
-    docsSource: any,
+    docsSource: unknown,
     opts: {
       /** Parameters (raw spec or reflect) to render as @param tags. */
-      params?: any[];
+      params?: readonly ParamLike[];
       /** The method's raw `returns` OptionalValue; pass with isMethod. */
-      returns?: any;
+      returns?: spec.OptionalValue;
       /** Emit `@return [void]` when a method declares no return type. */
       isMethod?: boolean;
       /** Property getter: emit an @return of the property's type. */
-      propertyType?: any;
+      propertyType?: RubyTypeRef;
       propertyOptional?: boolean;
     } = {},
   ): void {
@@ -396,10 +436,10 @@ export class RubyGenerator extends Generator {
 
     // Loop through the Abstract Syntax Tree (AST) metadata types
     const types = assembly.allTypes.slice();
-    const sortedTypes: any[] = [];
+    const sortedTypes: reflect.Type[] = [];
     const visited = new Set<string>();
 
-    const visit = (type: any) => {
+    const visit = (type: reflect.Type) => {
       if (visited.has(type.fqn)) return;
       visited.add(type.fqn);
 
@@ -519,10 +559,10 @@ export class RubyGenerator extends Generator {
     this.code.line('');
   }
 
-  private emitEnumType(typeSpec: any, prefix: string): void {
+  private emitEnumType(typeSpec: reflect.EnumType, prefix: string): void {
     const resolvedMembers = this.dedupByRubyName(
-      (typeSpec.members ?? []) as any[],
-      (m: any) => this.rubyConstName(m.name),
+      typeSpec.members,
+      (m) => this.rubyConstName(m.name),
       typeSpec.fqn,
     );
     this.emitDocs(typeSpec);
@@ -537,28 +577,31 @@ export class RubyGenerator extends Generator {
     this.code.line('');
   }
 
-  private emitInterfaceType(typeSpec: any, prefix: string): void {
+  private emitInterfaceType(
+    typeSpec: reflect.InterfaceType,
+    prefix: string,
+  ): void {
     const { props: resolvedAllProperties, methods: resolvedAllMethods } =
       this.dedupCrossCategory(
         this.dedupByRubyName(
-          typeSpec.allProperties as any[],
-          (p: any) => this.rubyName(p.name),
+          typeSpec.allProperties,
+          (p) => this.rubyName(p.name),
           typeSpec.fqn,
         ),
         this.dedupByRubyName(
-          typeSpec.allMethods as any[],
-          (m: any) => this.rubyName(m.name),
+          typeSpec.allMethods,
+          (m) => this.rubyName(m.name),
           typeSpec.fqn,
         ),
-        (p: any) => this.rubyName(p.name),
-        (m: any) => this.rubyName(m.name),
+        (p) => this.rubyName(p.name),
+        (m) => this.rubyName(m.name),
         typeSpec.fqn,
       );
     const kind = typeSpec.datatype ? 'class' : 'module';
     const rubyName = this.rubyModuleName(typeSpec.name);
 
     const bases = typeSpec.spec.interfaces ?? [];
-    const baseMixins = bases.map((b: any) => `::${this.rubyFullTypeName(b)}`);
+    const baseMixins = bases.map((b) => `::${this.rubyFullTypeName(b)}`);
     // JSII structs may extend several parents (diamond hierarchies), but a
     // Ruby class has a single superclass: subclass the first parent and
     // record the rest via `jsii_extra_struct_bases` so is_a?/kind_of?/case
@@ -594,7 +637,7 @@ export class RubyGenerator extends Generator {
       const props = resolvedAllProperties;
 
       const initArgs = props
-        .map((p: any) => {
+        .map((p) => {
           const name = this.rubyName(p.name);
           return p.optional ? `${name}: nil` : `${name}:`;
         })
@@ -678,14 +721,14 @@ export class RubyGenerator extends Generator {
 
       for (const method of resolvedAllMethods) {
         const sigParams = method.parameters
-          .map((p: any) => {
+          .map((p) => {
             const rubyParam = this.rubyName(p.name);
             if (p.variadic) return `*${rubyParam}`;
             return p.optional ? `${rubyParam} = nil` : rubyParam;
           })
           .join(', ');
         const callParams = method.parameters
-          .map((p: any) => {
+          .map((p) => {
             const rubyParam = this.rubyName(p.name);
             if (p.variadic) return `*${rubyParam}`;
             return rubyParam;
@@ -741,21 +784,21 @@ export class RubyGenerator extends Generator {
     this.code.line('');
   }
 
-  private emitClassType(typeSpec: any, prefix: string): void {
+  private emitClassType(typeSpec: reflect.ClassType, prefix: string): void {
     const { props: resolvedAllProperties, methods: resolvedAllMethods } =
       this.dedupCrossCategory(
         this.dedupByRubyName(
-          typeSpec.allProperties as any[],
-          (p: any) => this.rubyPropertyName(p),
+          typeSpec.allProperties,
+          (p) => this.rubyPropertyName(p),
           typeSpec.fqn,
         ),
         this.dedupByRubyName(
-          typeSpec.allMethods as any[],
-          (m: any) => this.rubyMethodName(m),
+          typeSpec.allMethods,
+          (m) => this.rubyMethodName(m),
           typeSpec.fqn,
         ),
-        (p: any) => this.rubyPropertyName(p),
-        (m: any) => this.rubyMethodName(m),
+        (p) => this.rubyPropertyName(p),
+        (m) => this.rubyMethodName(m),
         typeSpec.fqn,
       );
     const rubyName = this.rubyModuleName(typeSpec.name);
@@ -768,7 +811,7 @@ export class RubyGenerator extends Generator {
 
     const interfaces = typeSpec.spec.interfaces ?? [];
     const interfaceMixins = interfaces.map(
-      (i: any) => `::${this.rubyFullTypeName(i)}`,
+      (i) => `::${this.rubyFullTypeName(i)}`,
     );
 
     this.emitDocs(typeSpec);
@@ -790,7 +833,7 @@ export class RubyGenerator extends Generator {
       initializer.parameters.length > 0
     ) {
       const initParams = initializer.parameters
-        .map((p: any) => {
+        .map((p) => {
           const rubyParam = this.rubyName(p.name);
           if (p.variadic) return `*${rubyParam}`;
           return p.optional ? `${rubyParam} = nil` : rubyParam;
@@ -804,7 +847,7 @@ export class RubyGenerator extends Generator {
         this.emitStructCoercion(rubyParam, p.type);
       }
       const superArgs = initializer.parameters
-        .map((p: any) => {
+        .map((p) => {
           const rubyParam = this.rubyName(p.name);
           if (p.variadic) return `*${rubyParam}`;
           return rubyParam;
@@ -856,11 +899,12 @@ export class RubyGenerator extends Generator {
     // call instead.  A child that overrides a static still gets its own
     // stub, because allMethods/allProperties yield the most-derived
     // declaration (see the StaticHelloParent/Child fixture in jsii-calc).
-    const isOwnStatic = (m: any) => m.definingType?.fqn === typeSpec.fqn;
+    const isOwnStatic = (m: reflect.Property | reflect.Method) =>
+      m.definingType.fqn === typeSpec.fqn;
 
-    const overridableMethods = resolvedAllMethods.filter((m: any) => !m.static);
+    const overridableMethods = resolvedAllMethods.filter((m) => !m.static);
     const overridableProps = resolvedAllProperties.filter(
-      (p: any) => !p.static,
+      (p) => !p.static,
     );
 
     this.code.open('def self.jsii_overridable_methods');
@@ -886,7 +930,7 @@ export class RubyGenerator extends Generator {
       if (!method.static || !isOwnStatic(method)) continue;
 
       const sigParams = method.parameters
-        .map((p: any) => {
+        .map((p) => {
           const rubyParam = this.rubyName(p.name);
           if (p.variadic) return `*${rubyParam}`;
           return p.optional ? `${rubyParam} = nil` : rubyParam;
@@ -894,7 +938,7 @@ export class RubyGenerator extends Generator {
         .join(', ');
 
       const callParams = method.parameters
-        .map((p: any) => {
+        .map((p) => {
           const rubyParam = this.rubyName(p.name);
           if (p.variadic) return `*${rubyParam}`;
           return rubyParam;
@@ -980,7 +1024,7 @@ export class RubyGenerator extends Generator {
       if (method.static) continue;
 
       const sigParams = method.parameters
-        .map((p: any) => {
+        .map((p) => {
           const rubyParam = this.rubyName(p.name);
           if (p.variadic) return `*${rubyParam}`;
           return p.optional ? `${rubyParam} = nil` : rubyParam;
@@ -988,7 +1032,7 @@ export class RubyGenerator extends Generator {
         .join(', ');
 
       const callParams = method.parameters
-        .map((p: any) => {
+        .map((p) => {
           const rubyParam = this.rubyName(p.name);
           if (p.variadic) return `*${rubyParam}`;
           return rubyParam;
@@ -1214,7 +1258,7 @@ export class RubyGenerator extends Generator {
 
   private emitStructCoercion(
     variableName: string,
-    type: any,
+    type: RubyTypeRef | undefined,
     options: { variadic?: boolean; assignment?: string } = {},
   ): void {
     const ref = this.typeRefSpec(type);
@@ -1240,7 +1284,7 @@ export class RubyGenerator extends Generator {
 
   private emitTypeChecking(
     variableName: string,
-    type: any,
+    type: RubyTypeRef | undefined,
     jsiiName: string,
     options: { isOptional?: boolean; isVariadic?: boolean } = {},
   ): void {
@@ -1313,15 +1357,18 @@ export class RubyGenerator extends Generator {
    * (`def self.foo` vs `def foo`), so collisions are only checked within
    * the same staticness.
    */
-  private dedupCrossCategory(
-    props: any[],
-    methods: any[],
-    propRubyName: (p: any) => string,
-    methodRubyName: (m: any) => string,
+  private dedupCrossCategory<P extends MemberLike, M extends MemberLike>(
+    props: P[],
+    methods: M[],
+    propRubyName: (p: P) => string,
+    methodRubyName: (m: M) => string,
     fqn: string,
-  ): { props: any[]; methods: any[] } {
-    const buckets = new Map<string, Array<{ member: any; isProp: boolean }>>();
-    const add = (member: any, isProp: boolean, name: string) => {
+  ): { props: P[]; methods: M[] } {
+    const buckets = new Map<
+      string,
+      Array<{ member: P | M; isProp: boolean }>
+    >();
+    const add = (member: P | M, isProp: boolean, name: string) => {
       const key = `${member.static ? 'static' : 'instance'}:${name}`;
       const bucket = buckets.get(key) ?? [];
       bucket.push({ member, isProp });
@@ -1368,9 +1415,11 @@ export class RubyGenerator extends Generator {
     };
   }
 
-  private dedupByRubyName<
-    T extends { name: string; docs?: { deprecated?: string } },
-  >(members: readonly T[], rubyName: (m: T) => string, fqn: string): T[] {
+  private dedupByRubyName<T extends MemberLike>(
+    members: readonly T[],
+    rubyName: (m: T) => string,
+    fqn: string,
+  ): T[] {
     const byName = new Map<string, T[]>();
     for (const m of members) {
       const key = rubyName(m);
@@ -1430,7 +1479,9 @@ export class RubyGenerator extends Generator {
    * rewrite an unrelated `RamUsage` type in the consuming assembly (or in
    * a sibling dependency).
    */
-  private assemblyAcronyms(config: any): string[] {
+  private assemblyAcronyms(
+    config: { targets?: spec.AssemblyTargets } | undefined,
+  ): string[] {
     return (config?.targets?.ruby?.acronyms ?? []).filter(
       (a: unknown): a is string => typeof a === 'string' && a.length > 0,
     );
