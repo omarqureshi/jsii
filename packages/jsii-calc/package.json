@@ -52,10 +52,10 @@
   },
   "devDependencies": {
     "eslint": "^9.39.4",
-    "jsii": "5.9.28",
+    "jsii": "^6.0.0",
     "jsii-build-tools": "^0.0.0",
     "jsii-rosetta": "^5.9.32",
-    "typescript": "5.9.x"
+    "typescript": ">=6.0.x"
   },
   "jsii": {
     "outdir": "dist",
@@ -81,6 +81,10 @@
         "classifiers": [
           "Test :: Classifier :: Is Dummy"
         ]
+      },
+      "ruby": {
+        "gem": "jsii-calc",
+        "module": "JsiiCalc"
       }
     },
     "tsc": {
