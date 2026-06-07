@@ -1,0 +1,17 @@
+diff --git a/lib/common/find-utils.js b/lib/common/find-utils.js
+index e0597d4876801d0e70ef293be367a6f43d0e71e0..93eb5e3f5aa4b73b4738577bde06d6f72d23219b 100644
+--- a/lib/common/find-utils.js
++++ b/lib/common/find-utils.js
+@@ -34,7 +34,11 @@ function findUp(directory, pred) {
+ function findPackageJsonUp(packageName, directory) {
+     return findUp(directory, (dir) => {
+         const pjFile = path.join(dir, 'package.json');
+-        return fs.existsSync(pjFile) && JSON.parse(fs.readFileSync(pjFile, 'utf-8')).name === packageName;
++        if (!fs.existsSync(pjFile)) {
++            return false;
++        }
++        const name = JSON.parse(fs.readFileSync(pjFile, 'utf-8')).name;
++        return name === packageName || name.endsWith('/' + packageName);
+     });
+ }
+ /**

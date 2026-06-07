@@ -62,10 +62,10 @@
     "diff": "^5.2.2",
     "eslint": "^9.39.4",
     "jest": "^30.4.2",
-    "jsii": "^6.0.1",
+    "jsii": "^6.0.0",
     "jsii-build-tools": "^0.0.0",
     "jsii-calc": "^3.20.120",
-    "jsii-rosetta": "~6.0.0",
+    "jsii-rosetta": "patch:jsii-rosetta@npm%3A5.9.46#~/.yarn/patches/jsii-rosetta-npm-5.9.46-b2885a67b9.patch",
     "pyright": "^1.1.410",
     "typescript": "6.x"
   },
