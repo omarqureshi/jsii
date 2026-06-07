@@ -61,6 +61,13 @@ function rubySq(s: string): string {
 }
 
 /**
+ * Escape a string for literal use inside a RegExp pattern.
+ */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Render a JS value as a Ruby expression that evaluates to JSON.parse of the
  * value's canonical JSON encoding.  Base64 keeps the embedded literal safe
  * from any input — no backslashes, quotes, `#{...}`, or newlines to escape.
@@ -834,15 +841,20 @@ export class RubyGenerator extends Generator {
         : this.assembly.dependencyClosure?.[assemblyName];
 
     if (!config) {
-      const assemblyModule = this.rubyModuleName(assemblyName);
+      // Unknown assembly: no acronym configuration is available for it.
+      const assemblyModule = this.rubyModuleName(assemblyName, []);
       return [
         assemblyModule,
-        ...segments.slice(1).map((p) => this.rubyModuleName(p)),
+        ...segments.slice(1).map((p) => this.rubyModuleName(p, [])),
       ].join('::');
     }
 
+    // Names in this fqn belong to `config`'s assembly — apply *its*
+    // acronym configuration, not the pooled closure's.
+    const acronyms = this.assemblyAcronyms(config);
     const assemblyModule =
-      config.targets?.ruby?.module ?? this.rubyModuleName(assemblyName);
+      config.targets?.ruby?.module ??
+      this.rubyModuleName(assemblyName, acronyms);
     const result = [];
 
     for (let len = segments.length; len > 0; len--) {
@@ -861,7 +873,7 @@ export class RubyGenerator extends Generator {
         break;
       }
 
-      result.unshift(this.rubyModuleName(segments[len - 1]));
+      result.unshift(this.rubyModuleName(segments[len - 1], acronyms));
     }
 
     return result.join('::');
@@ -1205,29 +1217,43 @@ export class RubyGenerator extends Generator {
     }
     const depInfo = this.assembly.dependencyClosure?.[name];
     if (depInfo) {
-      return depInfo.targets?.ruby?.module ?? this.rubyModuleName(name);
+      return (
+        depInfo.targets?.ruby?.module ??
+        this.rubyModuleName(name, this.assemblyAcronyms(depInfo))
+      );
     }
-    return this.rubyModuleName(name);
+    return this.rubyModuleName(name, []);
   }
 
-  private rubyModuleName(name: string): string {
-    const acronyms = [
-      ...(this.assembly.targets?.ruby?.acronyms ?? []),
-      ...Object.values(this.assembly.dependencyClosure ?? {}).flatMap(
-        (dep: any) => dep.targets?.ruby?.acronyms ?? [],
-      ),
-    ];
+  /**
+   * The acronym list configured by a specific assembly
+   * (`targets.ruby.acronyms`).  Acronyms are deliberately scoped to the
+   * assembly that declared them: a dependency capitalizing `RAM` must not
+   * rewrite an unrelated `RamUsage` type in the consuming assembly (or in
+   * a sibling dependency).
+   */
+  private assemblyAcronyms(config: any): string[] {
+    return (config?.targets?.ruby?.acronyms ?? []).filter(
+      (a: unknown): a is string => typeof a === 'string' && a.length > 0,
+    );
+  }
+
+  private rubyModuleName(name: string, acronyms?: string[]): string {
+    // Default to the acronyms of the assembly being generated; callers
+    // converting names that belong to a *dependency* pass that assembly's
+    // own list (see rubyFullTypeName / rubyModuleForAssembly).
+    acronyms ??= this.assemblyAcronyms(this.assembly);
 
     // Handle scoped packages: @scope/package -> Scope::Package
     if (name.startsWith('@')) {
       const parts = name.slice(1).split('/');
-      return parts.map((p) => this.rubyModuleName(p)).join('::');
+      return parts.map((p) => this.rubyModuleName(p, acronyms)).join('::');
     }
 
     // Handle hyphens: jsii-calc -> JsiiCalc
     if (name.includes('-')) {
       const parts = name.split('-');
-      return parts.map((p) => this.rubyModuleName(p)).join('');
+      return parts.map((p) => this.rubyModuleName(p, acronyms)).join('');
     }
 
     const sanitized = name.replace(/[^a-zA-Z0-9_]/g, '');
@@ -1240,7 +1266,8 @@ export class RubyGenerator extends Generator {
       // Find the acronym case-insensitively. A match is only considered a valid
       // word boundary if it starts with a capital letter and is followed by either
       // another capital letter, a digit, an 's' (for plurals), or the end of the string.
-      const regex = new RegExp(`(${acronym})`, 'ig');
+      // The acronym is config-supplied text, not a pattern — escape it.
+      const regex = new RegExp(`(${escapeRegExp(acronym)})`, 'ig');
       pascal = pascal.replace(regex, (match, _p1, offset) => {
         if (match[0] !== match[0].toUpperCase()) return match;
 

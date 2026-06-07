@@ -101,6 +101,31 @@ describe('Ruby naming behavior', () => {
       expect(rubyTarget.rubyModuleName('EcsCluster')).toBe('ECSCluster');
     });
 
+    it('treats acronyms as literal text, not regex patterns', () => {
+      // A config-supplied acronym containing regex metacharacters must not
+      // break generation (previously: "Nothing to repeat" SyntaxError) or
+      // inject match behavior.
+      expect(() => rubyTarget.rubyModuleName('CppHelper', ['C++'])).not.toThrow();
+      expect(rubyTarget.rubyModuleName('CppHelper', ['C++'])).toBe('CppHelper');
+      expect(rubyTarget.rubyModuleName('fooBar', ['.*'])).toBe('FooBar');
+    });
+
+    it('scopes acronyms to the supplied list (per-assembly, not pooled)', () => {
+      // Explicit empty list: nothing rewritten even though the test
+      // assembly configures VPC as an acronym.
+      expect(rubyTarget.rubyModuleName('CfnVpc', [])).toBe('CfnVpc');
+      expect(rubyTarget.rubyModuleName('CfnVpc', ['VPC'])).toBe('CfnVPC');
+      // Default (no list passed) uses the generated assembly's own config.
+      expect(rubyTarget.rubyModuleName('CfnVpc')).toBe('CfnVPC');
+    });
+
+    it('ignores blank acronym entries', () => {
+      // An empty-string acronym would match everywhere; assemblyAcronyms
+      // filters it out before it reaches the regex.
+      expect(rubyTarget.assemblyAcronyms({ targets: { ruby: { acronyms: ['', 'VPC', 42] } } }))
+        .toEqual(['VPC']);
+    });
+
     it('does not over-capitalize acronyms embedded inside words', () => {
       // "Special" contains "pec", "ial" etc. "AWS" is an acronym.
       // "AWSpecial" has "AWS" but it is not followed by an uppercase letter or end of string.
