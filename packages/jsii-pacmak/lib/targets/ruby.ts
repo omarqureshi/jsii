@@ -1309,21 +1309,42 @@ export class RubyGenerator extends Generator {
 
   private async generateGemspec(outdir: string) {
     const assembly = this.reflectAssembly;
-    const gemName = rubyGemName(assembly.spec);
+    const assemblySpec = assembly.spec;
+    const gemName = rubyGemName(assemblySpec);
     const gemspecPath = path.join(outdir, `${gemName}.gemspec`);
     await fs.mkdir(outdir, { recursive: true });
 
+    // author, license, description and homepage are all required fields of
+    // a jsii assembly, so they can be emitted unconditionally; guards below
+    // are belt-and-braces for hand-crafted assemblies.
     const gemspecContent = [
       `Gem::Specification.new do |s|`,
       `  s.name        = '${rubySq(gemName)}'`,
       `  s.version     = '${rubySq(toReleaseVersion(assembly.version, TargetName.RUBY))}'`,
       `  s.summary     = 'Ruby bindings for ${rubySq(assembly.name)}'`,
-      `  s.authors     = ['JSII Generator']`,
+    ];
+    if (assemblySpec.description) {
+      gemspecContent.push(
+        `  s.description = '${rubySq(assemblySpec.description)}'`,
+      );
+    }
+    gemspecContent.push(
+      `  s.authors     = ['${rubySq(assemblySpec.author?.name ?? 'JSII Generator')}']`,
+    );
+    if (assemblySpec.license) {
+      gemspecContent.push(`  s.license     = '${rubySq(assemblySpec.license)}'`);
+    }
+    if (assemblySpec.homepage) {
+      gemspecContent.push(
+        `  s.homepage    = '${rubySq(assemblySpec.homepage)}'`,
+      );
+    }
+    gemspecContent.push(
       `  s.files       = Dir["lib/**/*"]`,
       `  s.required_ruby_version = '>= 3.1.0'`,
-      `  s.add_runtime_dependency 'jsii-ruby-runtime', ${toRubyVersionRange(`^${VERSION}`)}`,
-      `  s.add_runtime_dependency 'base64', '~> 0.2', '>= 0.2.0'`,
-    ];
+      `  s.add_dependency 'jsii-ruby-runtime', ${toRubyVersionRange(`^${VERSION}`)}`,
+      `  s.add_dependency 'base64', '~> 0.2'`,
+    );
 
     if (this.assembly.dependencies) {
       for (const [depName, version] of Object.entries(
@@ -1333,7 +1354,7 @@ export class RubyGenerator extends Generator {
         const depGem = depInfo?.targets?.ruby?.gem as string | undefined;
         if (depGem) {
           gemspecContent.push(
-            `  s.add_runtime_dependency '${rubySq(depGem)}', ${toRubyVersionRange(version)}`,
+            `  s.add_dependency '${rubySq(depGem)}', ${toRubyVersionRange(version)}`,
           );
         }
       }
@@ -1341,7 +1362,7 @@ export class RubyGenerator extends Generator {
 
     gemspecContent.push(`end`);
 
-    await fs.writeFile(gemspecPath, gemspecContent.join('\n'), 'utf-8');
+    await fs.writeFile(gemspecPath, `${gemspecContent.join('\n')}\n`, 'utf-8');
   }
 
   protected getAssemblyOutputDir(_mod: spec.Assembly) {
