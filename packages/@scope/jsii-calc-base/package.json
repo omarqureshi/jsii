@@ -35,9 +35,10 @@
     "@scope/jsii-calc-base-of-base": "^2.1.1"
   },
   "devDependencies": {
+    "@scope/jsii-calc-base-of-base": "2.1.1",
     "jsii": "^6.0.0",
     "jsii-build-tools": "^0.0.0",
-    "jsii-rosetta": "^5.9.32",
+    "jsii-rosetta": "patch:jsii-rosetta@npm%3A5.9.46#~/.yarn/patches/jsii-rosetta-npm-5.9.46-b2885a67b9.patch",
     "typescript": ">=6.0.x"
   },
   "jsii": {

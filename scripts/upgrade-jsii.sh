@@ -45,3 +45,21 @@ yq -i ".jobs.pacmak-integration-test.strategy.matrix.rosetta = [$matrix]" .githu
 echo "Upgrading jsii & jsii-rosetta to latest"
 echo ""
 npx lerna exec --parallel ncu -- --upgrade --target=latest --dep=prod,dev --filter=jsii,jsii-rosetta
+
+# Clean cached omarqureshi/jsii resolutions from yarn.lock to force fetching the latest 0.0.0 version
+echo "Cleaning cached @omarqureshi/jsii resolutions from yarn.lock..."
+node -e '
+const fs = require("fs");
+if (fs.existsSync("yarn.lock")) {
+  let content = fs.readFileSync("yarn.lock", "utf8");
+  let blocks = content.split("\n\n");
+  blocks = blocks.filter(b => {
+    const firstLine = b.trim().split("\n")[0];
+    return !firstLine.includes("\"@omarqureshi/jsii@npm:") && !firstLine.includes("\"jsii@patch:@omarqureshi/jsii@npm:");
+  });
+  fs.writeFileSync("yarn.lock", blocks.join("\n\n"));
+}
+'
+
+echo "Running yarn install to fetch and lock the latest 0.0.0 compiler version..."
+YARN_NPM_AUTH_TOKEN=$(gh auth token) yarn install
