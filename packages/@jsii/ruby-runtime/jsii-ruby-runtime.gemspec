@@ -10,8 +10,8 @@ Gem::Specification.new do |s|
   s.authors     = [package['author'] || 'JSII Generator']
   s.license     = package['license'] || 'Apache-2.0'
   s.files       = Dir['lib/**/*.rb']
-  s.required_ruby_version = '>= 3.1.0'
-  s.add_runtime_dependency 'base64', '~> 0.2', '>= 0.2.0'
+  s.required_ruby_version = '>= 3.3.0'
+  s.add_dependency 'base64', '~> 0.2'
 
   s.add_development_dependency 'rake', '~> 13.0'
   s.add_development_dependency 'rubocop', '~> 1.86'

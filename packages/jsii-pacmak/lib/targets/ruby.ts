@@ -1623,7 +1623,7 @@ export class RubyGenerator extends Generator {
     }
     gemspecContent.push(
       `  s.files       = Dir["lib/**/*"]`,
-      `  s.required_ruby_version = '>= 3.1.0'`,
+      `  s.required_ruby_version = '>= 3.3.0'`,
       `  s.add_dependency 'jsii-ruby-runtime', ${toRubyVersionRange(`^${VERSION}`)}`,
       `  s.add_dependency 'base64', '~> 0.2'`,
     );

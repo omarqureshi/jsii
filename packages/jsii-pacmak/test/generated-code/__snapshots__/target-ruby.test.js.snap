@@ -367,7 +367,7 @@ Gem::Specification.new do |s|
   s.license     = 'Apache-2.0'
   s.homepage    = 'https://github.com/aws/jsii'
   s.files       = Dir["lib/**/*"]
-  s.required_ruby_version = '>= 3.1.0'
+  s.required_ruby_version = '>= 3.3.0'
   s.add_dependency 'jsii-ruby-runtime', '< 0.0.1'
   s.add_dependency 'base64', '~> 0.2'
   s.add_dependency 'scope-jsii-calc-base-of-base', '>= 2.1.1', '< 3.0.0'
@@ -761,7 +761,7 @@ Gem::Specification.new do |s|
   s.license     = 'Apache-2.0'
   s.homepage    = 'https://github.com/aws/jsii'
   s.files       = Dir["lib/**/*"]
-  s.required_ruby_version = '>= 3.1.0'
+  s.required_ruby_version = '>= 3.3.0'
   s.add_dependency 'jsii-ruby-runtime', '< 0.0.1'
   s.add_dependency 'base64', '~> 0.2'
 end
@@ -1711,7 +1711,7 @@ Gem::Specification.new do |s|
   s.license     = 'Apache-2.0'
   s.homepage    = 'https://github.com/aws/jsii'
   s.files       = Dir["lib/**/*"]
-  s.required_ruby_version = '>= 3.1.0'
+  s.required_ruby_version = '>= 3.3.0'
   s.add_dependency 'jsii-ruby-runtime', '< 0.0.1'
   s.add_dependency 'base64', '~> 0.2'
   s.add_dependency 'scope-jsii-calc-base', '< 0.0.1'
@@ -2122,7 +2122,7 @@ Gem::Specification.new do |s|
   s.license     = 'Apache-2.0'
   s.homepage    = 'https://github.com/aws/jsii'
   s.files       = Dir["lib/**/*"]
-  s.required_ruby_version = '>= 3.1.0'
+  s.required_ruby_version = '>= 3.3.0'
   s.add_dependency 'jsii-ruby-runtime', '< 0.0.1'
   s.add_dependency 'base64', '~> 0.2'
   s.add_dependency 'scope-jsii-calc-base', '< 0.0.1'
