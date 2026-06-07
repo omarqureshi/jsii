@@ -200,6 +200,165 @@ export class RubyGenerator extends Generator {
     return !!(type?.isInterfaceType() && type?.isDataType());
   }
 
+  /**
+   * Extract the raw `spec.Docs` from either shape we hold: jsii-reflect
+   * objects wrap it under `.spec.docs`; plain spec objects (enum members,
+   * initializer parameters) carry `.docs` directly.
+   */
+  private rawDocs(obj: any): spec.Docs | undefined {
+    return obj?.spec?.docs ?? obj?.docs;
+  }
+
+  /**
+   * Render a jsii type reference as a YARD type string for `@param` /
+   * `@return` tags.
+   */
+  private rubyDocType(ref: spec.TypeReference | undefined): string {
+    if (!ref) {
+      return 'Object';
+    }
+    if (spec.isPrimitiveTypeReference(ref)) {
+      switch (ref.primitive) {
+        case spec.PrimitiveType.String:
+          return 'String';
+        case spec.PrimitiveType.Number:
+          return 'Numeric';
+        case spec.PrimitiveType.Boolean:
+          return 'Boolean';
+        case spec.PrimitiveType.Date:
+          return 'DateTime';
+        case spec.PrimitiveType.Json:
+          return 'Hash';
+        default:
+          return 'Object';
+      }
+    }
+    if (spec.isNamedTypeReference(ref)) {
+      return this.rubyFullTypeName(ref.fqn);
+    }
+    if (spec.isCollectionTypeReference(ref)) {
+      const elem = this.rubyDocType(ref.collection.elementtype);
+      return ref.collection.kind === spec.CollectionKind.Array
+        ? `Array<${elem}>`
+        : `Hash{String => ${elem}}`;
+    }
+    if (spec.isUnionTypeReference(ref)) {
+      return ref.union.types.map((t) => this.rubyDocType(t)).join(', ');
+    }
+    return 'Object';
+  }
+
+  /**
+   * Emit a block of text as `#`-prefixed comment lines.
+   */
+  private emitDocLines(text: string): void {
+    for (const line of text.split('\n')) {
+      const trimmed = line.trimEnd();
+      this.code.line(trimmed === '' ? '#' : `# ${trimmed}`);
+    }
+  }
+
+  /**
+   * Collapse text for interpolation into a single-line YARD tag.  Doc text
+   * (e.g. `docs.returns`) may contain newlines, which would leak subsequent
+   * lines out of the comment and into generated code.
+   */
+  private inlineDoc(text: string): string {
+    return text
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l !== '')
+      .join(' ');
+  }
+
+  /**
+   * Emit a YARD documentation comment from jsii docs: summary and remarks
+   * as free text, followed by `@param` / `@return` / `@deprecated` /
+   * `@see` / `@example` tags as applicable.  Silently emits nothing when
+   * there are no docs and no tags to write.
+   */
+  private emitDocs(
+    docsSource: any,
+    opts: {
+      /** Parameters (raw spec or reflect) to render as @param tags. */
+      params?: any[];
+      /** The method's raw `returns` OptionalValue; pass with isMethod. */
+      returns?: any;
+      /** Emit `@return [void]` when a method declares no return type. */
+      isMethod?: boolean;
+      /** Property getter: emit an @return of the property's type. */
+      propertyType?: any;
+      propertyOptional?: boolean;
+    } = {},
+  ): void {
+    const docs: spec.Docs = this.rawDocs(docsSource) ?? {};
+    const tags: string[] = [];
+
+    for (const p of opts.params ?? []) {
+      const pDocs: spec.Docs = this.rawDocs(p) ?? {};
+      const baseType = this.rubyDocType(this.typeRefSpec(p.type));
+      const rendered = p.variadic
+        ? `Array<${baseType}>`
+        : `${baseType}${p.optional ? ', nil' : ''}`;
+      const summary = pDocs.summary ? ` ${this.inlineDoc(pDocs.summary)}` : '';
+      tags.push(`# @param ${this.rubyName(p.name)} [${rendered}]${summary}`);
+    }
+
+    if (opts.returns?.type) {
+      const t = this.rubyDocType(this.typeRefSpec(opts.returns.type));
+      const optional = opts.returns.optional ? ', nil' : '';
+      const text = docs.returns ? ` ${this.inlineDoc(docs.returns)}` : '';
+      tags.push(`# @return [${t}${optional}]${text}`);
+    } else if (opts.isMethod) {
+      tags.push('# @return [void]');
+    } else if (opts.propertyType) {
+      const t = this.rubyDocType(this.typeRefSpec(opts.propertyType));
+      tags.push(`# @return [${t}${opts.propertyOptional ? ', nil' : ''}]`);
+    }
+
+    if (docs.default !== undefined) {
+      tags.push(`# @note Default: ${this.inlineDoc(docs.default)}`);
+    }
+    if (docs.deprecated !== undefined) {
+      const reason =
+        typeof docs.deprecated === 'string'
+          ? ` ${this.inlineDoc(docs.deprecated)}`
+          : '';
+      tags.push(`# @deprecated${reason}`);
+    }
+    if (docs.see) {
+      tags.push(`# @see ${this.inlineDoc(docs.see)}`);
+    }
+
+    const exampleLines = docs.example
+      ? ['# @example', ...docs.example.split('\n').map((l) => `#   ${l.trimEnd()}`.trimEnd())]
+      : [];
+
+    const hasText = !!(docs.summary || docs.remarks);
+    if (!hasText && tags.length === 0 && exampleLines.length === 0) {
+      return;
+    }
+
+    if (docs.summary) {
+      this.emitDocLines(docs.summary);
+    }
+    if (docs.remarks) {
+      this.code.line('#');
+      this.emitDocLines(docs.remarks);
+    }
+    if (tags.length > 0 || exampleLines.length > 0) {
+      if (hasText) {
+        this.code.line('#');
+      }
+      for (const tag of tags) {
+        this.code.line(tag);
+      }
+      for (const line of exampleLines) {
+        this.code.line(line);
+      }
+    }
+  }
+
   public async save(outdir: string, tarball: string, legalese: Legalese) {
     const assembly = this.reflectAssembly;
 
@@ -366,8 +525,10 @@ export class RubyGenerator extends Generator {
       (m: any) => this.rubyConstName(m.name),
       typeSpec.fqn,
     );
+    this.emitDocs(typeSpec);
     this.code.open(`module ${prefix}${this.rubyModuleName(typeSpec.name)}`);
     for (const member of resolvedMembers) {
+      this.emitDocs(member);
       this.code.line(
         `${this.rubyConstName(member.name)} = Jsii::Enum.new("${rubyDq(typeSpec.fqn)}", "${rubyDq(member.name)}")`,
       );
@@ -410,6 +571,7 @@ export class RubyGenerator extends Generator {
           ? ' < Jsii::Struct'
           : '';
 
+    this.emitDocs(typeSpec);
     this.code.open(`${kind} ${prefix}${rubyName}${baseString}`);
 
     if (!typeSpec.datatype) {
@@ -438,6 +600,9 @@ export class RubyGenerator extends Generator {
         })
         .join(', ');
 
+      // Struct members double as constructor keyword arguments — document
+      // them as @params (each carries its own summary/type/optionality).
+      this.emitDocs(undefined, { params: props });
       this.code.open(`def initialize(${initArgs})`);
       for (const prop of props) {
         const rubyName = this.rubyName(prop.name);
@@ -455,6 +620,10 @@ export class RubyGenerator extends Generator {
       this.code.line('');
 
       for (const prop of props) {
+        this.emitDocs(prop, {
+          propertyType: prop.type,
+          propertyOptional: prop.optional,
+        });
         this.code.line(`attr_reader :${this.rubyName(prop.name)}`);
       }
       this.code.line('');
@@ -487,6 +656,10 @@ export class RubyGenerator extends Generator {
     } else {
       for (const prop of resolvedAllProperties) {
         const propRubyName = this.rubyName(prop.name);
+        this.emitDocs(prop, {
+          propertyType: prop.type,
+          propertyOptional: prop.optional,
+        });
         this.code.open(`def ${propRubyName}()`);
         this.code.line(`jsii_get_property("${rubyDq(prop.name)}")`);
         this.code.close(`end`);
@@ -518,6 +691,11 @@ export class RubyGenerator extends Generator {
             return rubyParam;
           })
           .join(', ');
+        this.emitDocs(method, {
+          params: method.parameters,
+          returns: method.spec?.returns,
+          isMethod: true,
+        });
         this.code.open(`def ${this.rubyName(method.name)}(${sigParams})`);
         for (const p of method.parameters) {
           const rubyParam = this.rubyName(p.name);
@@ -593,6 +771,7 @@ export class RubyGenerator extends Generator {
       (i: any) => `::${this.rubyFullTypeName(i)}`,
     );
 
+    this.emitDocs(typeSpec);
     this.code.open(`class ${prefix}${rubyName} < ${baseClass}`);
 
     for (const mixin of interfaceMixins) {
@@ -618,6 +797,7 @@ export class RubyGenerator extends Generator {
         })
         .join(', ');
 
+      this.emitDocs(initializer, { params: initializer.parameters });
       this.code.open(`def initialize(${initParams})`);
       for (const p of initializer.parameters) {
         const rubyParam = this.rubyName(p.name);
@@ -721,6 +901,11 @@ export class RubyGenerator extends Generator {
         })
         .join(', ');
 
+      this.emitDocs(method, {
+        params: method.parameters,
+        returns: method.spec?.returns,
+        isMethod: true,
+      });
       this.code.open(`def self.${this.rubyMethodName(method)}(${sigParams})`);
       for (const p of method.parameters) {
         const rubyParam = this.rubyName(p.name);
@@ -745,6 +930,10 @@ export class RubyGenerator extends Generator {
       const rubyName = this.rubyPropertyName(prop);
 
       if (prop.static) {
+        this.emitDocs(prop, {
+          propertyType: prop.type,
+          propertyOptional: prop.optional,
+        });
         this.code.open(`def self.${rubyName}()`);
         this.code.line(
           `Jsii::Kernel.instance.get_static("${rubyDq(typeSpec.fqn)}", "${rubyDq(prop.name)}")`,
@@ -765,6 +954,10 @@ export class RubyGenerator extends Generator {
           this.code.line('');
         }
       } else {
+        this.emitDocs(prop, {
+          propertyType: prop.type,
+          propertyOptional: prop.optional,
+        });
         this.code.open(`def ${rubyName}()`);
         this.code.line(`jsii_get_property("${rubyDq(prop.name)}")`);
         this.code.close(`end`);
@@ -802,6 +995,11 @@ export class RubyGenerator extends Generator {
         })
         .join(', ');
 
+      this.emitDocs(method, {
+        params: method.parameters,
+        returns: method.spec?.returns,
+        isMethod: true,
+      });
       this.code.open(`def ${this.rubyMethodName(method)}(${sigParams})`);
       for (const p of method.parameters) {
         const rubyParam = this.rubyName(p.name);
