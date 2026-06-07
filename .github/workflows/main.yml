@@ -488,7 +488,9 @@ jobs:
         rosetta:
           - latest
           - 5.9.x
-          - 6.0.x
+          # 6.0.x: re-add once jsii-rosetta 6.0 has a stable release — npm
+          # currently only has 6.0.0-dev.0 (v6.0-next), which matches
+          # neither the 6.0.x range nor jsii-pacmak's >=5.9.0 peer range.
     steps:
       # Check out the code
       - name: Download Artifact
