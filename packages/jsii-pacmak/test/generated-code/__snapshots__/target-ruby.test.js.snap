@@ -10257,6 +10257,55 @@ module JsiiCalc
     end
   end
 
+  # Demonstrates that arguments passed by JS-side callers in excess of a method's declared signature are silently dropped at the language-runtime boundary.
+  #
+  # Calling a function with more arguments than declared is legal in JavaScript
+  # (the extras are simply ignored), and jsii cannot prevent packages from doing
+  # so. jsii must therefore accept these calls and forward only the declared
+  # arguments to the language runtime — refusing them would break otherwise-valid
+  # JS code as soon as the receiver happens to be implemented in another language.
+  #
+  # This pattern occurs in the wild when a JS caller (e.g. the CDK
+  # \`Lazy.any\` resolution path with \`IStableAnyProducer\`) invokes an override
+  # with more arguments than the interface declares.
+  #
+  # @see https://github.com/aws/jsii/pull/5126
+  class SyncOverrideExtraArgs < Jsii::Object
+    self.jsii_fqn = "jsii-calc.SyncOverrideExtraArgs"
+    Jsii::Object.register_jsii_fqn("jsii-calc.SyncOverrideExtraArgs", self)
+
+    def initialize
+      Jsii::Object.instance_method(:initialize).bind(self).call
+    end
+
+    def self.jsii_overridable_methods
+      {
+        :call_produce_with_extra_arg => { kind: :method, name: "callProduceWithExtraArg", is_optional: false },
+        :produce => { kind: :method, name: "produce", is_optional: false },
+      }
+    end
+
+    # Calls \`produce()\` with one extra argument that the spec does not declare, and returns whatever the override produced.
+    #
+    # The extra argument is expected
+    # to be silently dropped before it crosses the language boundary.
+    #
+    # @return [String]
+    def call_produce_with_extra_arg()
+      jsii_call_method("callProduceWithExtraArg", [])
+    end
+
+    # Override this method.
+    #
+    # Declared with no parameters.
+    #
+    # @return [String]
+    def produce()
+      jsii_call_method("produce", [])
+    end
+
+  end
+
   class SyncVirtualMethods < Jsii::Object
     self.jsii_fqn = "jsii-calc.SyncVirtualMethods"
     Jsii::Object.register_jsii_fqn("jsii-calc.SyncVirtualMethods", self)
@@ -16031,7 +16080,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # Some number, like 42.
      #
      # @return [Numeric]
-@@ -8161,46 +8491,51 @@
+@@ -8210,46 +8540,51 @@
      def a()
        jsii_get_property("a")
      end
@@ -16083,7 +16132,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      # @return [Numeric]
      def caller_is_async()
-@@ -8213,16 +8548,18 @@
+@@ -8262,16 +8597,18 @@
      end
  
      # @param value [String]
@@ -16102,7 +16151,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      # @return [Numeric]
      def read_a()
-@@ -8245,16 +8582,18 @@
+@@ -8294,16 +8631,18 @@
      end
  
      # @param n [Numeric]
@@ -16121,7 +16170,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8293,19 +8632,21 @@
+@@ -8342,19 +8681,21 @@
      #
      # @param input [JsiiCalc::StructWithEnum]
      # @return [Boolean]
@@ -16143,7 +16192,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8336,12 +8677,15 @@
+@@ -8385,12 +8726,15 @@
      # @param required [String] This is a required field.
      # @param second_level [Numeric, JsiiCalc::SecondLevelStruct] A union to really stress test our serialization.
      # @param optional [String, nil] You don't have to pass this.
@@ -16159,7 +16208,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # This is a required field.
      #
      # @return [String]
-@@ -8441,11 +8785,13 @@
+@@ -8490,11 +8834,13 @@
  
      # @param bar [String, Numeric, JsiiCalc::AllTypes]
      # @param foo [String, Numeric, nil]
@@ -16173,7 +16222,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [String, Numeric, JsiiCalc::AllTypes]
      attr_reader :bar
      # @return [String, Numeric, nil]
-@@ -8474,10 +8820,11 @@
+@@ -8523,10 +8869,11 @@
      self.jsii_fqn = "jsii-calc.UpcasingReflectable"
      Jsii::Object.register_jsii_fqn("jsii-calc.UpcasingReflectable", self)
  
@@ -16185,7 +16234,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -8544,10 +8891,11 @@
+@@ -8593,10 +8940,11 @@
      self.jsii_fqn = "jsii-calc.UsesInterfaceWithProperties"
      Jsii::Object.register_jsii_fqn("jsii-calc.UsesInterfaceWithProperties", self)
  
@@ -16197,7 +16246,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -8569,16 +8917,18 @@
+@@ -8618,16 +8966,18 @@
      end
  
      # @param ext [JsiiCalc::IInterfaceWithPropertiesExtension]
@@ -16216,7 +16265,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8586,10 +8936,11 @@
+@@ -8635,10 +8985,11 @@
      self.jsii_fqn = "jsii-calc.VariadicInvoker"
      Jsii::Object.register_jsii_fqn("jsii-calc.VariadicInvoker", self)
  
@@ -16228,7 +16277,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -8598,10 +8949,13 @@
+@@ -8647,10 +8998,13 @@
      end
  
      # @param values [Array<Numeric>]
@@ -16242,7 +16291,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8609,10 +8963,13 @@
+@@ -8658,10 +9012,13 @@
      self.jsii_fqn = "jsii-calc.VariadicMethod"
      Jsii::Object.register_jsii_fqn("jsii-calc.VariadicMethod", self)
  
@@ -16256,7 +16305,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -8622,10 +8979,14 @@
+@@ -8671,10 +9028,14 @@
  
      # @param first [Numeric] the first element of the array to be returned (after the \`prefix\` provided at construction time).
      # @param others [Array<Numeric>] other elements to be included in the array.
@@ -16271,7 +16320,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8633,10 +8994,13 @@
+@@ -8682,10 +9043,13 @@
      self.jsii_fqn = "jsii-calc.VariadicTypeUnion"
      Jsii::Object.register_jsii_fqn("jsii-calc.VariadicTypeUnion", self)
  
@@ -16285,7 +16334,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -8648,10 +9012,11 @@
+@@ -8697,10 +9061,11 @@
      def union()
        jsii_get_property("union")
      end
@@ -16297,7 +16346,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8674,34 +9039,39 @@
+@@ -8723,34 +9088,39 @@
      end
  
      # @param index [Numeric]
@@ -16337,7 +16386,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8768,10 +9138,11 @@
+@@ -8817,10 +9187,11 @@
      def dont_read_me()
        jsii_get_property("dontReadMe")
      end
@@ -16349,7 +16398,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8780,10 +9151,11 @@
+@@ -8829,10 +9200,11 @@
      self.jsii_fqn = "jsii-calc.WithPrivatePropertyInConstructor"
      Jsii::Object.register_jsii_fqn("jsii-calc.WithPrivatePropertyInConstructor", self)
  
@@ -16361,7 +16410,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -8816,10 +9188,11 @@
+@@ -8865,10 +9237,11 @@
      def prop()
        jsii_get_property("prop")
      end
@@ -16373,7 +16422,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8841,10 +9214,11 @@
+@@ -8890,10 +9263,11 @@
      def prop()
        jsii_get_property("prop")
      end
@@ -16385,7 +16434,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8866,10 +9240,11 @@
+@@ -8915,10 +9289,11 @@
      def bar()
        jsii_get_property("bar")
      end
@@ -16397,7 +16446,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8877,10 +9252,11 @@
+@@ -8926,10 +9301,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.InterfaceInNamespaceIncludesClasses.Hello", self)
  
      # @param foo [Numeric]
@@ -16409,7 +16458,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [Numeric]
      attr_reader :foo
  
-@@ -8903,10 +9279,11 @@
+@@ -8952,10 +9328,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.InterfaceInNamespaceOnlyInterface.Hello", self)
  
      # @param foo [Numeric]
@@ -16421,7 +16470,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [Numeric]
      attr_reader :foo
  
-@@ -8929,10 +9306,11 @@
+@@ -8978,10 +9355,11 @@
      self.jsii_fqn = "jsii-calc.PythonSelf.ClassWithSelf"
      Jsii::Object.register_jsii_fqn("jsii-calc.PythonSelf.ClassWithSelf", self)
  
@@ -16433,7 +16482,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -8947,10 +9325,11 @@
+@@ -8996,10 +9374,11 @@
      end
  
      # @param _self [Numeric]
@@ -16445,7 +16494,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -8959,10 +9338,11 @@
+@@ -9008,10 +9387,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.PythonSelf.ClassWithSelfKwarg", self)
  
      # @param props [JsiiCalc::PythonSelf::StructWithSelf]
@@ -16457,7 +16506,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -8981,10 +9361,11 @@
+@@ -9030,10 +9410,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.PythonSelf.IInterfaceWithSelf", self)
  
      # @param _self [Numeric]
@@ -16469,7 +16518,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -8997,10 +9378,11 @@
+@@ -9046,10 +9427,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.PythonSelf.StructWithSelf", self)
  
      # @param _self [String]
@@ -16481,7 +16530,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [String]
      attr_reader :_self
  
-@@ -9063,22 +9445,25 @@
+@@ -9112,22 +9494,25 @@
      end
  
      # @param option [JsiiCalc::Anonymous::IOptionA, JsiiCalc::Anonymous::IOptionB]
@@ -16507,7 +16556,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -9107,10 +9492,11 @@
+@@ -9156,10 +9541,11 @@
      # Implement this functin to return \`gen.next()\`. It is extremely important that the \`donotimport\` submodule is NEVER explicitly loaded in the testing application (otherwise this test is void).
      #
      # @param gen [JsiiCalc::IRandomNumberGenerator] a VERY pseudo random number generator.
@@ -16519,7 +16568,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -9126,10 +9512,11 @@
+@@ -9175,10 +9561,11 @@
      self.jsii_fqn = "jsii-calc.cdk16625.donotimport.UnimportedSubmoduleType"
      Jsii::Object.register_jsii_fqn("jsii-calc.cdk16625.donotimport.UnimportedSubmoduleType", self)
  
@@ -16531,7 +16580,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -9151,10 +9538,11 @@
+@@ -9200,10 +9587,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.cdk22369.AcceptsPath", self)
  
      # @param props [JsiiCalc::Cdk22369::AcceptsPathProps]
@@ -16543,7 +16592,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -9167,10 +9555,11 @@
+@@ -9216,10 +9604,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.cdk22369.AcceptsPathProps", self)
  
      # @param source_path [String] A path that doesn't exist.
@@ -16555,7 +16604,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # A path that doesn't exist.
      #
      # @return [String]
-@@ -9287,10 +9676,11 @@
+@@ -9336,10 +9725,11 @@
      def add_unrelated_member()
        jsii_get_property("addUnrelatedMember")
      end
@@ -16567,7 +16616,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      # @return [JsiiCalc::CovariantOverrides::ClassOverrides::Superclass]
      def create_something()
-@@ -9334,10 +9724,11 @@
+@@ -9383,10 +9773,11 @@
      def add_unrelated_member()
        jsii_get_property("addUnrelatedMember")
      end
@@ -16579,7 +16628,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      # @return [JsiiCalc::CovariantOverrides::ClassOverrides::SubSubclass]
      def create_something()
-@@ -9366,10 +9757,11 @@
+@@ -9415,10 +9806,11 @@
      def name()
        jsii_get_property("name")
      end
@@ -16591,7 +16640,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      # @return [String]
      def say_hello()
-@@ -9398,10 +9790,11 @@
+@@ -9447,10 +9839,11 @@
      def name()
        jsii_get_property("name")
      end
@@ -16603,7 +16652,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      # @return [String]
      def say_hello()
-@@ -9431,10 +9824,11 @@
+@@ -9480,10 +9873,11 @@
      def name()
        jsii_get_property("name")
      end
@@ -16615,7 +16664,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      # Ensures this class is different than its parent.
      #
-@@ -9442,10 +9836,11 @@
+@@ -9491,10 +9885,11 @@
      def unique()
        jsii_get_property("unique")
      end
@@ -16627,7 +16676,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      # @return [String]
      def say_hello()
-@@ -9469,10 +9864,11 @@
+@@ -9518,10 +9913,11 @@
  
      # @param props [JsiiCalc::HomonymousForwardReferences::Bar::ConsumerProps]
      # @return [JsiiCalc::HomonymousForwardReferences::Bar::Homonymous]
@@ -16639,7 +16688,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -9480,10 +9876,11 @@
+@@ -9529,10 +9925,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.homonymousForwardReferences.bar.ConsumerProps", self)
  
      # @param homonymous [JsiiCalc::HomonymousForwardReferences::Bar::Homonymous]
@@ -16651,7 +16700,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [JsiiCalc::HomonymousForwardReferences::Bar::Homonymous]
      attr_reader :homonymous
  
-@@ -9506,10 +9903,11 @@
+@@ -9555,10 +9952,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.homonymousForwardReferences.bar.Homonymous", self)
  
      # @param numeric_property [Numeric]
@@ -16663,7 +16712,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [Numeric]
      attr_reader :numeric_property
  
-@@ -9543,10 +9941,11 @@
+@@ -9592,10 +9990,11 @@
  
      # @param props [JsiiCalc::HomonymousForwardReferences::Foo::ConsumerProps]
      # @return [JsiiCalc::HomonymousForwardReferences::Foo::Homonymous]
@@ -16675,7 +16724,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -9554,10 +9953,11 @@
+@@ -9603,10 +10002,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.homonymousForwardReferences.foo.ConsumerProps", self)
  
      # @param homonymous [JsiiCalc::HomonymousForwardReferences::Foo::Homonymous]
@@ -16687,7 +16736,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [JsiiCalc::HomonymousForwardReferences::Foo::Homonymous]
      attr_reader :homonymous
  
-@@ -9580,10 +9980,11 @@
+@@ -9629,10 +10029,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.homonymousForwardReferences.foo.Homonymous", self)
  
      # @param string_property [String]
@@ -16699,7 +16748,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [String]
      attr_reader :string_property
  
-@@ -9607,10 +10008,11 @@
+@@ -9656,10 +10057,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.intersection.ConsumesIntersection", self)
  
      # @param props [JsiiCalc::Intersection::IntersectionProps]
@@ -16711,7 +16760,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -9618,17 +10020,19 @@
+@@ -9667,17 +10069,19 @@
      end
  
      # @param param [Object]
@@ -16731,7 +16780,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -9651,10 +10055,11 @@
+@@ -9700,10 +10104,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.intersection.IntersectionProps", self)
  
      # @param param [Object]
@@ -16743,7 +16792,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [Object]
      attr_reader :param
  
-@@ -9678,11 +10083,13 @@
+@@ -9727,11 +10132,13 @@
  
      # @param name [String]
      # @param count [Numeric, nil]
@@ -16757,7 +16806,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [String]
      attr_reader :name
      # @return [Numeric, nil]
-@@ -9720,17 +10127,19 @@
+@@ -9769,17 +10176,19 @@
      end
  
      # @param receiver [JsiiCalc::Jsii3656::OverrideMe]
@@ -16777,7 +16826,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -9739,10 +10148,11 @@
+@@ -9788,10 +10197,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.jsii4894.NonPascalCaseTest", self)
  
      # @param props [JsiiCalc::Jsii4894::NonPascalCaseTestProps]
@@ -16789,7 +16838,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -9767,10 +10177,11 @@
+@@ -9816,10 +10226,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.jsii4894.NonPascalCaseTestProps", self)
  
      # @param some_type [Scope::JsiiCalcLib::Submodule::ClassWithNONPASCALCASEDName::SomeType]
@@ -16801,7 +16850,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [Scope::JsiiCalcLib::Submodule::ClassWithNONPASCALCASEDName::SomeType]
      attr_reader :some_type
  
-@@ -9796,10 +10207,11 @@
+@@ -9845,10 +10256,11 @@
      self.jsii_fqn = "jsii-calc.module2530.MyClass"
      Jsii::Object.register_jsii_fqn("jsii-calc.module2530.MyClass", self)
  
@@ -16813,7 +16862,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -9809,24 +10221,29 @@
+@@ -9858,24 +10270,29 @@
      end
  
      # @param _ [Boolean]
@@ -16843,7 +16892,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -9863,10 +10280,11 @@
+@@ -9912,10 +10329,11 @@
      self.jsii_fqn = "jsii-calc.module2647.ExtendAndImplement"
      Jsii::Object.register_jsii_fqn("jsii-calc.module2647.ExtendAndImplement", self)
  
@@ -16855,7 +16904,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -9877,10 +10295,11 @@
+@@ -9926,10 +10344,11 @@
      end
  
      # @param obj [Scope::JsiiCalcBase::IBaseInterface]
@@ -16867,7 +16916,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      # Say hello!
      #
-@@ -9913,16 +10332,18 @@
+@@ -9962,16 +10381,18 @@
  
      # @param _bar [Hash{String => Scope::JsiiCalcBase::BaseProps}]
      # @return [void]
@@ -16886,7 +16935,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -9985,11 +10406,13 @@
+@@ -10034,11 +10455,13 @@
  
      # @param base_map [Hash{String => Scope::JsiiCalcBase::BaseProps}]
      # @param numbers [Array<Scope::JsiiCalcLib::Number>]
@@ -16900,7 +16949,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [Hash{String => Scope::JsiiCalcBase::BaseProps}]
      attr_reader :base_map
      # @return [Array<Scope::JsiiCalcLib::Number>]
-@@ -10016,10 +10439,11 @@
+@@ -10065,10 +10488,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.module2692.submodule1.Bar", self)
  
      # @param bar1 [String]
@@ -16912,7 +16961,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [String]
      attr_reader :bar1
  
-@@ -10042,10 +10466,11 @@
+@@ -10091,10 +10515,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.module2692.submodule2.Bar", self)
  
      # @param bar2 [String]
@@ -16924,7 +16973,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [String]
      attr_reader :bar2
  
-@@ -10071,12 +10496,15 @@
+@@ -10120,12 +10545,15 @@
      # @param bar2 [String]
      # @param bar1 [String]
      # @param foo2 [String]
@@ -16940,7 +16989,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [String]
      attr_reader :bar2
      # @return [String]
-@@ -10650,10 +11078,11 @@
+@@ -10699,10 +11127,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.submodule.Default", self)
  
      # @param foo [Numeric]
@@ -16952,7 +17001,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [Numeric]
      attr_reader :foo
  
-@@ -10693,10 +11122,11 @@
+@@ -10742,10 +11171,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.submodule.MyClass", self)
  
      # @param props [JsiiCalc::Submodule::Child::SomeStruct]
@@ -16964,7 +17013,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
      def self.jsii_overridable_methods
        {
-@@ -10733,17 +11163,19 @@
+@@ -10782,17 +11212,19 @@
      def all_types()
        jsii_get_property("allTypes")
      end
@@ -16984,7 +17033,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -10751,10 +11183,11 @@
+@@ -10800,10 +11232,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.submodule.back_references.MyClassReference", self)
  
      # @param reference [JsiiCalc::Submodule::MyClass]
@@ -16996,7 +17045,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [JsiiCalc::Submodule::MyClass]
      attr_reader :reference
  
-@@ -10823,10 +11256,11 @@
+@@ -10872,10 +11305,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.submodule.child.SomeStruct", self)
  
      # @param prop [JsiiCalc::Submodule::Child::SomeEnum]
@@ -17008,7 +17057,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [JsiiCalc::Submodule::Child::SomeEnum]
      attr_reader :prop
  
-@@ -10850,11 +11284,13 @@
+@@ -10899,11 +11333,13 @@
  
      # @param prop [JsiiCalc::Submodule::Child::SomeEnum]
      # @param extra [String, nil]
@@ -17022,7 +17071,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [JsiiCalc::Submodule::Child::SomeEnum]
      attr_reader :prop
      # @return [String, nil]
-@@ -10912,10 +11348,11 @@
+@@ -10961,10 +11397,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.submodule.child.Structure", self)
  
      # @param bool [Boolean]
@@ -17034,7 +17083,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [Boolean]
      attr_reader :bool
  
-@@ -10950,10 +11387,11 @@
+@@ -10999,10 +11436,11 @@
  
      # @param props [JsiiCalc::Submodule::Child::KwargsProps, nil]
      # @return [Boolean]
@@ -17046,7 +17095,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
  
    end
  
-@@ -10989,10 +11427,11 @@
+@@ -11038,10 +11476,11 @@
      Jsii::Object.register_jsii_fqn("jsii-calc.submodule.param.SpecialParameter", self)
  
      # @param value [String]
@@ -17058,7 +17107,7 @@ exports[`Generated code for "jsii-calc": <runtime-type-check-diff>/ruby/lib/jsii
      # @return [String]
      attr_reader :value
  
-@@ -11046,10 +11485,11 @@
+@@ -11095,10 +11534,11 @@
      end
  
      # @param param [Scope::JsiiCalcLib::IFriendly, JsiiCalc::Union::IResolvable, JsiiCalc::Union::Resolvable]
