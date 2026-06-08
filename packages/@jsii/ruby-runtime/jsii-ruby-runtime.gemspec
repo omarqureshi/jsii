@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
   s.summary     = package['description'] || 'Official JSII core runtime engine for Ruby'
   s.authors     = [package['author'] || 'JSII Generator']
   s.license     = package['license'] || 'Apache-2.0'
-  s.files       = Dir['lib/**/*.rb']
+  s.files       = Dir['lib/**/*.rb'] + Dir['sig/**/*.rbs']
   s.required_ruby_version = '>= 3.3.0'
   s.add_dependency 'base64', '~> 0.2'
 

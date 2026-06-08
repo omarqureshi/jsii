@@ -291,6 +291,59 @@ export class RubyGenerator extends Generator {
   }
 
   /**
+   * Render a jsii type reference as an RBS type expression (for `sig/`
+   * declarations).  Same recursion as {@link rubyDocType}, but RBS surface
+   * syntax and honest escape hatches: `any`/`json` become `untyped` (not a
+   * concrete class), booleans are the `bool` built-in, collections use
+   * `[...]`, unions use `|`.  When `optional` is set, the result is wrapped
+   * nilable (`T?`).
+   */
+  private rbsType(ref: spec.TypeReference | undefined, optional = false): string {
+    const bare = this.rbsTypeBare(ref);
+    // `untyped` already admits nil; don't double-decorate.
+    return optional && bare !== 'untyped' ? `${bare}?` : bare;
+  }
+
+  private rbsTypeBare(ref: spec.TypeReference | undefined): string {
+    if (!ref) {
+      return 'untyped';
+    }
+    if (spec.isPrimitiveTypeReference(ref)) {
+      switch (ref.primitive) {
+        case spec.PrimitiveType.String:
+          return 'String';
+        case spec.PrimitiveType.Number:
+          return 'Numeric';
+        case spec.PrimitiveType.Boolean:
+          return 'bool';
+        case spec.PrimitiveType.Date:
+          return 'DateTime';
+        // `json` is recursively any-shaped and `any` is the escape hatch;
+        // both are honestly `untyped` rather than a flattened Hash/Object.
+        case spec.PrimitiveType.Json:
+        case spec.PrimitiveType.Any:
+          return 'untyped';
+      }
+    }
+    if (spec.isNamedTypeReference(ref)) {
+      return `::${this.rubyFullTypeName(ref.fqn)}`;
+    }
+    if (spec.isCollectionTypeReference(ref)) {
+      const elem = this.rbsTypeBare(ref.collection.elementtype);
+      return ref.collection.kind === spec.CollectionKind.Array
+        ? `Array[${elem}]`
+        : `Hash[String, ${elem}]`;
+    }
+    if (spec.isUnionTypeReference(ref)) {
+      const arms = [...new Set(ref.union.types.map((t) => this.rbsTypeBare(t)))];
+      // A bare `A | B` collides with RBS's method-overload separator, so
+      // unions must be parenthesized to be valid in return/param position.
+      return arms.length === 1 ? arms[0] : `(${arms.join(' | ')})`;
+    }
+    return 'untyped';
+  }
+
+  /**
    * Emit a block of text as `#`-prefixed comment lines.
    */
   private emitDocLines(text: string): void {
@@ -505,6 +558,10 @@ export class RubyGenerator extends Generator {
 
     // Generate the gemspec manifest file for package management
     await this.generateGemspec(outdir);
+
+    // Emit RBS type signatures alongside the generated code (sig/), giving
+    // Steep/TypeProf users static type checking and editor completion.
+    await this.generateRbs(outdir, sortedTypes);
 
     return super.save(outdir, tarball, legalese);
   }
@@ -1622,7 +1679,7 @@ export class RubyGenerator extends Generator {
       );
     }
     gemspecContent.push(
-      `  s.files       = Dir["lib/**/*"]`,
+      `  s.files       = Dir["lib/**/*"] + Dir["sig/**/*"]`,
       `  s.required_ruby_version = '>= 3.3.0'`,
       `  s.add_dependency 'jsii-ruby-runtime', ${toRubyVersionRange(`^${VERSION}`)}`,
       `  s.add_dependency 'base64', '~> 0.2'`,
@@ -1645,6 +1702,222 @@ export class RubyGenerator extends Generator {
     gemspecContent.push(`end`);
 
     await fs.writeFile(gemspecPath, `${gemspecContent.join('\n')}\n`, 'utf-8');
+  }
+
+  /**
+   * Emit `sig/<assembly>.rbs` — RBS type signatures mirroring the generated
+   * Ruby, so Steep/TypeProf users get static checking and editor completion.
+   * Uses fully-qualified declaration headers (`class A::B::C`) with empty
+   * namespace-module predeclarations, which keeps emission order-independent
+   * (RBS resolves a file as a whole).  Names come from the same mappers the
+   * `.rb` emission uses, so signatures line up with the real methods.
+   */
+  private async generateRbs(outdir: string, sortedTypes: reflect.Type[]) {
+    const assembly = this.reflectAssembly;
+    const lines: string[] = [];
+
+    // Ruby paths that are emitted as classes (jsii classes + datatype
+    // interfaces) — we must NOT also predeclare them as namespace modules.
+    const classPaths = new Set<string>();
+    for (const type of sortedTypes) {
+      if (type.isClassType() || (type.isInterfaceType() && type.spec.datatype)) {
+        classPaths.add(this.rubyFullTypeName(type.fqn));
+      }
+    }
+
+    // Predeclare every pure-namespace module fragment (every fqn prefix that
+    // isn't itself a class path).
+    const namespaces = new Set<string>();
+    for (const type of sortedTypes) {
+      const parts = this.rubyFullTypeName(type.fqn).split('::');
+      let current = '';
+      for (let i = 0; i < parts.length - 1; i++) {
+        current = current ? `${current}::${parts[i]}` : parts[i];
+        if (!classPaths.has(current)) {
+          namespaces.add(current);
+        }
+      }
+    }
+    for (const ns of Array.from(namespaces).sort(
+      (a, b) => a.split('::').length - b.split('::').length,
+    )) {
+      lines.push(`module ${ns} end`);
+    }
+    if (namespaces.size > 0) {
+      lines.push('');
+    }
+
+    for (const type of sortedTypes) {
+      if (type.isEnumType()) {
+        this.emitRbsEnum(type, lines);
+      } else if (type.isInterfaceType()) {
+        this.emitRbsInterface(type, lines);
+      } else if (type.isClassType()) {
+        this.emitRbsClass(type, lines);
+      }
+    }
+
+    const sigPath = path.join(outdir, 'sig', `${assembly.name}.rbs`);
+    await fs.mkdir(path.dirname(sigPath), { recursive: true });
+    await fs.writeFile(sigPath, `${lines.join('\n')}\n`, 'utf-8');
+  }
+
+  /** RBS parameter list for a callable's parameters. */
+  private rbsParams(params: readonly any[]): string {
+    return params
+      .map((p) => {
+        const name = this.rubyName(p.name);
+        if (p.variadic) {
+          return `*${this.rbsTypeBare(this.typeRefSpec(p.type))} ${name}`;
+        }
+        const t = this.rbsType(this.typeRefSpec(p.type), p.optional);
+        return p.optional ? `?${t} ${name}` : `${t} ${name}`;
+      })
+      .join(', ');
+  }
+
+  /** RBS return type for a method (`void` when it declares no return). */
+  private rbsReturn(method: any): string {
+    const ret = method.spec?.returns;
+    return ret?.type
+      ? this.rbsType(this.typeRefSpec(ret.type), ret.optional)
+      : 'void';
+  }
+
+  private emitRbsEnum(typeSpec: reflect.EnumType, lines: string[]): void {
+    const members = this.dedupByRubyName(
+      typeSpec.members,
+      (m) => this.rubyConstName(m.name),
+      typeSpec.fqn,
+    );
+    lines.push(`module ${this.rubyFullTypeName(typeSpec.fqn)}`);
+    for (const m of members) {
+      lines.push(`  ${this.rubyConstName(m.name)}: ::Jsii::Enum`);
+    }
+    lines.push('end', '');
+  }
+
+  private emitRbsInterface(
+    typeSpec: reflect.InterfaceType,
+    lines: string[],
+  ): void {
+    const { props, methods } = this.dedupCrossCategory(
+      this.dedupByRubyName(
+        typeSpec.allProperties,
+        (p) => this.rubyName(p.name),
+        typeSpec.fqn,
+      ),
+      this.dedupByRubyName(
+        typeSpec.allMethods,
+        (m) => this.rubyName(m.name),
+        typeSpec.fqn,
+      ),
+      (p) => this.rubyName(p.name),
+      (m) => this.rubyName(m.name),
+      typeSpec.fqn,
+    );
+    const full = this.rubyFullTypeName(typeSpec.fqn);
+
+    if (typeSpec.datatype) {
+      // Struct → value class with a kwargs constructor + readers.
+      const bases = typeSpec.spec.interfaces ?? [];
+      const base =
+        bases.length > 0
+          ? `::${this.rubyFullTypeName(bases[0])}`
+          : '::Jsii::Struct';
+      lines.push(`class ${full} < ${base}`);
+      const kwargs = props
+        .map((p) => {
+          const t = this.rbsType(this.typeRefSpec(p.type), p.optional);
+          return p.optional
+            ? `?${this.rubyName(p.name)}: ${t}`
+            : `${this.rubyName(p.name)}: ${t}`;
+        })
+        .join(', ');
+      lines.push(`  def initialize: (${kwargs}) -> void`);
+      for (const p of props) {
+        lines.push(
+          `  attr_reader ${this.rubyName(p.name)}: ${this.rbsType(this.typeRefSpec(p.type), p.optional)}`,
+        );
+      }
+      lines.push('end', '');
+      return;
+    }
+
+    // Behavioral interface → module of method/property signatures.
+    lines.push(`module ${full}`);
+    for (const p of props) {
+      const t = this.rbsType(this.typeRefSpec(p.type), p.optional);
+      lines.push(`  attr_reader ${this.rubyName(p.name)}: ${t}`);
+      if (!p.immutable) {
+        lines.push(`  attr_writer ${this.rubyName(p.name)}: ${t}`);
+      }
+    }
+    for (const m of methods) {
+      lines.push(
+        `  def ${this.rubyName(m.name)}: (${this.rbsParams(m.parameters)}) -> ${this.rbsReturn(m)}`,
+      );
+    }
+    lines.push('end', '');
+  }
+
+  private emitRbsClass(typeSpec: reflect.ClassType, lines: string[]): void {
+    const { props, methods } = this.dedupCrossCategory(
+      this.dedupByRubyName(
+        typeSpec.allProperties,
+        (p) => this.rubyPropertyName(p),
+        typeSpec.fqn,
+      ),
+      this.dedupByRubyName(
+        typeSpec.allMethods,
+        (m) => this.rubyMethodName(m),
+        typeSpec.fqn,
+      ),
+      (p) => this.rubyPropertyName(p),
+      (m) => this.rubyMethodName(m),
+      typeSpec.fqn,
+    );
+    const full = this.rubyFullTypeName(typeSpec.fqn);
+    const base = typeSpec.spec.base
+      ? `::${this.rubyFullTypeName(typeSpec.spec.base)}`
+      : '::Jsii::Object';
+
+    lines.push(`class ${full} < ${base}`);
+    for (const iface of typeSpec.spec.interfaces ?? []) {
+      lines.push(`  include ::${this.rubyFullTypeName(iface)}`);
+    }
+
+    const init = typeSpec.spec.initializer;
+    if (init && init.parameters && init.parameters.length > 0) {
+      lines.push(`  def initialize: (${this.rbsParams(init.parameters)}) -> void`);
+    } else if (init) {
+      lines.push('  def initialize: () -> void');
+    }
+
+    for (const p of props) {
+      const t = this.rbsType(this.typeRefSpec(p.type), p.optional);
+      if (p.static) {
+        // Statics (incl. const props) are generated as singleton getter/
+        // setter methods, not Ruby attributes — emit `def self.` sigs.
+        const name = this.rubyPropertyName(p);
+        lines.push(`  def self.${name}: () -> ${t}`);
+        if (!p.immutable) {
+          lines.push(`  def self.${name}=: (${t}) -> ${t}`);
+        }
+        continue;
+      }
+      lines.push(`  attr_reader ${this.rubyName(p.name)}: ${t}`);
+      if (!p.immutable) {
+        lines.push(`  attr_writer ${this.rubyName(p.name)}: ${t}`);
+      }
+    }
+    for (const m of methods) {
+      const recv = m.static ? 'self.' : '';
+      lines.push(
+        `  def ${recv}${this.rubyMethodName(m)}: (${this.rbsParams(m.parameters)}) -> ${this.rbsReturn(m)}`,
+      );
+    }
+    lines.push('end', '');
   }
 
   protected getAssemblyOutputDir(_mod: spec.Assembly) {
