@@ -10,8 +10,28 @@ module Jsii
         @registry ||= {}
       end
 
-      # @return [Hash{String=>Jsii::Object}] the process-wide map from
-      #   `$jsii.byref` handle to the live Ruby proxy instance.
+      # The process-wide map from `$jsii.byref` handle to the live Ruby proxy
+      # instance.
+      #
+      # This is intentionally a *strong*-reference Hash, not a weak map, and
+      # the runtime deliberately never issues the kernel's `del` call when a
+      # proxy is garbage-collected. A jsii object is referenced from both
+      # sides of the boundary, and the guest (Ruby) cannot know how many
+      # references the host (the Node sidecar, and TypeScript code running in
+      # it) still holds. Deleting a kernel object that the host still
+      # references would create a dangling reference there — a use-after-free
+      # the guest has no way to rule out.
+      #
+      # Every reference runtime makes the same choice: the Python runtime uses
+      # a strong dict with the comment "we can never free the memory of JSII
+      # objects ever, because we have no idea how many references exist on the
+      # *other* side"; the Go runtime defines a `Del` request but never calls
+      # it per-object, attaching its only finalizer to the kernel client to
+      # close the child process. Wholesale cleanup happens the same way here:
+      # {Jsii::Kernel#shutdown} closes the sidecar, freeing all kernel objects
+      # at once. This suits jsii's `synth`-style, short-lived workloads.
+      #
+      # @return [Hash{String=>Jsii::Object}] the strong byref → proxy map.
       def objects
         @objects ||= {}
       end
