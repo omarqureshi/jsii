@@ -535,26 +535,80 @@ export class RubyGenerator extends Generator {
       visit(type);
     }
 
+    // Group types for lazy (autoload) emission: each *namespace-direct* type
+    // gets its own file; types nested under a class are bundled into that
+    // class's file (they can't be independently autoloaded — declaring the
+    // autoload would reference, and thus force-load, the enclosing class).
+    const ownerOf = (t: reflect.Type): reflect.Type => {
+      let cur = t;
+      for (;;) {
+        const parentFqn = cur.fqn.split('.').slice(0, -1).join('.');
+        const parent = typesByFqn.get(parentFqn);
+        if (parent && parent.isClassType()) {
+          cur = parent; // nested under a class → bundle into it
+          continue;
+        }
+        return cur;
+      }
+    };
+    const groups = new Map<string, reflect.Type[]>(); // owner fqn → members
     for (const type of sortedTypes) {
-      const fullNamespace = this.relativeRubyNamespace(type.fqn);
-      const prefix = fullNamespace ? `${fullNamespace}::` : '';
+      const owner = ownerOf(type);
+      const bucket = groups.get(owner.fqn) ?? [];
+      bucket.push(type);
+      groups.set(owner.fqn, bucket);
+    }
 
-      if (type.isEnumType()) {
-        this.emitEnumType(type, prefix);
-      }
-
-      if (type.isInterfaceType()) {
-        this.emitInterfaceType(type, prefix);
-      }
-
-      if (type.isClassType()) {
-        this.emitClassType(type, prefix);
+    // The loader (lib/<assembly>.rb) is required eagerly; it declares the
+    // module skeleton, loads the assembly into the kernel, and registers an
+    // `autoload` + runtime path for each owner type — but defines no bodies.
+    for (const [ownerFqn, members] of groups) {
+      const owner = typesByFqn.get(ownerFqn)!;
+      const requirePath = this.rubyRequirePath(owner.fqn);
+      const enclosing = this.rubyEnclosingModule(owner.fqn);
+      const constName = this.rubyModuleName(owner.name);
+      // A `Module#autoload` covers constant references in user code — but only
+      // for the namespace-direct owner: you can't autoload a constant nested
+      // under a class without referencing (and thus force-loading) that class.
+      this.code.line(
+        `${enclosing}.autoload(:${constName}, '${rubySq(requirePath)}')`,
+      );
+      // `register_autoload` covers the kernel handing back an fqn the user
+      // never named. Register *every* member against the owner's file —
+      // including the nested-under-class types bundled into it — so a
+      // kernel-returned nested type still hydrates to its real proxy even when
+      // its owner was never referenced.
+      for (const member of members) {
+        this.code.line(
+          `Jsii::Object.register_autoload("${rubyDq(member.fqn)}", '${rubySq(requirePath)}')`,
+        );
       }
     }
 
     this.code.close('end');
-
     this.code.closeFile(srcFile);
+
+    // One file per owner, defining the owner type and any types nested under
+    // it, using fully-qualified (compact) headers — the loader has already
+    // declared the namespace modules, and is always required first.
+    for (const [ownerFqn, members] of groups) {
+      const owner = typesByFqn.get(ownerFqn)!;
+      const typeFile = path.join('lib', `${this.rubyRequirePath(owner.fqn)}.rb`);
+      this.code.openFile(typeFile);
+      this.code.line("require 'jsii'");
+      this.code.line('');
+      for (const type of members) {
+        const prefix = `${this.rubyEnclosingModule(type.fqn)}::`;
+        if (type.isEnumType()) {
+          this.emitEnumType(type, prefix);
+        } else if (type.isInterfaceType()) {
+          this.emitInterfaceType(type, prefix);
+        } else if (type.isClassType()) {
+          this.emitClassType(type, prefix);
+        }
+      }
+      this.code.closeFile(typeFile);
+    }
 
     // Generate the gemspec manifest file for package management
     await this.generateGemspec(outdir);
@@ -1192,6 +1246,30 @@ export class RubyGenerator extends Generator {
     }
 
     return result.join('::');
+  }
+
+  /**
+   * The fully-qualified Ruby module that encloses a type — its full Ruby
+   * name minus the final segment (e.g. `JsiiCalc::Composition` for
+   * `CompositeOperation`).  Used to declare an `autoload` on the right
+   * module and to emit compact `class A::B::C` headers in per-type files.
+   */
+  private rubyEnclosingModule(fqn: string): string {
+    return this.rubyFullTypeName(fqn).split('::').slice(0, -1).join('::');
+  }
+
+  /**
+   * The `require` path of a type's generated file, relative to `lib/`:
+   * `<assembly-name>/<snake namespace.../snake type>` — e.g.
+   * `jsii-calc/composition/composite_operation`.  Used both as the file
+   * location and the argument to `autoload`/`register_autoload`, so the two
+   * always agree.
+   */
+  private rubyRequirePath(fqn: string): string {
+    const full = this.rubyFullTypeName(fqn).split('::');
+    const asm = this.rubyModuleForAssembly(this.assembly.name).split('::');
+    const rel = full.slice(asm.length).map((s) => toSnakeCase(s));
+    return [this.assembly.name, ...rel].join('/');
   }
 
   private relativeRubyNamespace(fqn: string): string {

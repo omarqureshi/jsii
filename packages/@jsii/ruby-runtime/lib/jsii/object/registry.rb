@@ -78,11 +78,45 @@ module Jsii
         Jsii::Object.registry[fqn] = klass
       end
 
-      # Look up the Ruby class/module registered for a given JSII fqn.
+      # @return [Hash{String=>String}] process-wide map from JSII fqn to the
+      #   `require` path of the file that defines (and self-registers) its
+      #   Ruby proxy.  Populated eagerly by a generated assembly's loader so
+      #   that types can be loaded on demand — see {#find_class_by_fqn}.
+      def autoload_paths
+        @autoload_paths ||= {}
+      end
+
+      # Record where a type's proxy can be loaded from, without loading it.
+      # Generated assembly loaders call this for every type alongside the
+      # Ruby `autoload` declaration, so the two load triggers stay in sync:
+      # Ruby `autoload` covers constant references in user code, while this
+      # map covers the case the kernel hands back an fqn the user never named
+      # (pervasive in CDK: `vpc.public_subnets`, `bucket.grant_read`, ...).
+      #
+      # @param fqn  [String] the JSII fully-qualified name.
+      # @param path [String] the `require` path of the defining file.
+      # @return [void]
+      def register_autoload(fqn, path)
+        autoload_paths[fqn] = path
+      end
+
+      # Look up the Ruby class/module registered for a given JSII fqn,
+      # loading its defining file on demand if it hasn't been required yet.
+      #
+      # The on-demand load is what makes lazy (autoload) code generation safe
+      # for hydration: when the kernel returns a `$jsii.byref` of a type the
+      # user never referenced by constant, the type's file hasn't been loaded
+      # and the registry is empty for it — so we `require` it here (which runs
+      # its `register_jsii_fqn`) before resolving.
       #
       # @param fqn [String] the JSII fully-qualified name.
-      # @return [Class, Module, nil] the registered proxy type, or `nil` if none is registered.
+      # @return [Class, Module, nil] the registered proxy type, or `nil`.
       def find_class_by_fqn(fqn)
+        return Jsii::Object.registry[fqn] if Jsii::Object.registry.key?(fqn)
+
+        path = Jsii::Object.autoload_paths[fqn]
+        require path if path
+
         Jsii::Object.registry[fqn]
       end
 
