@@ -417,6 +417,10 @@ defineTest(
         module: 'jsii_calc',
         classifiers: ['Test :: Classifier :: Is Dummy'],
       },
+      ruby: {
+        gem: 'jsii-calc',
+        module: 'JsiiCalc',
+      },
     });
     expect(sandbox.naming({ assembly: '@scope/jsii-calc-lib' }).naming).toEqual(
       {
@@ -441,6 +445,10 @@ defineTest(
         python: {
           distName: 'scope.jsii-calc-lib',
           module: 'scope.jsii_calc_lib',
+        },
+        ruby: {
+          gem: 'scope-jsii-calc-lib',
+          module: 'Scope::JsiiCalcLib',
         },
       },
     );

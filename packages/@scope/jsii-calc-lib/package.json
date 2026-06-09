@@ -39,10 +39,10 @@
     "@scope/jsii-calc-base-of-base": "^2.1.1"
   },
   "devDependencies": {
-    "jsii": "5.9.28",
+    "jsii": "^6.0.0",
     "jsii-build-tools": "^0.0.0",
     "jsii-rosetta": "^5.9.32",
-    "typescript": "5.9.x"
+    "typescript": ">=6.0.x"
   },
   "jsii": {
     "outdir": "dist",
@@ -67,6 +67,10 @@
       "python": {
         "distName": "scope.jsii-calc-lib",
         "module": "scope.jsii_calc_lib"
+      },
+      "ruby": {
+        "gem": "scope-jsii-calc-lib",
+        "module": "Scope::JsiiCalcLib"
       }
     },
     "tsc": {
