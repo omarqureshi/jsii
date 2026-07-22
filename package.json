@@ -54,6 +54,6 @@
   ],
   "packageManager": "yarn@4.13.0",
   "resolutions": {
-    "jsii": "patch:@omarqureshi/jsii@npm:>=0.0.0-0#.yarn/patches/@omarqureshi-jsii.patch"
+    "jsii": "npm:@omarqureshi/jsii@>=0.0.0-0"
   }
 }
