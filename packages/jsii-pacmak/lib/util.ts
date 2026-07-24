@@ -62,10 +62,14 @@ export async function findPackageJsonUp(
 ) {
   return findUp(directory, async (dir) => {
     const pjFile = path.join(dir, 'package.json');
-    return (
-      (await fs.pathExists(pjFile)) &&
-      (await fs.readJson(pjFile)).name === packageName
-    );
+    if (!(await fs.pathExists(pjFile))) {
+      return false;
+    }
+    // Self-publish only: the compiler is republished as `@omarqureshi/jsii`
+    // but depended on as `jsii`, so match a trailing `/<packageName>` too.
+    // `?.` guards the nameless private repo root (undefined.endsWith throws).
+    const name = (await fs.readJson(pjFile)).name;
+    return name === packageName || name?.endsWith(`/${packageName}`) === true;
   });
 }
 
